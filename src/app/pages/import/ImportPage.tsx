@@ -37,7 +37,7 @@ export function ImportPage() {
   const [confirming, setConfirming] = useState(false);
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState<RowResult[] | null>(null);
-  const [onlyRows, setOnlyRows] = useState<number[] | null>(null);
+  const [onlyRows, setOnlyRows] = useState<Set<number> | null>(null);
   const stopRef = useRef(false);
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export function ImportPage() {
     () => (describe ? prepareRows(dataRows, effectiveMapping, describe, op, blank, op === "upsert" ? keyField : null, numbers) : []),
     [describe, dataRows, effectiveMapping.join("|"), op, blank, keyField, numbers],
   );
-  const toRun = onlyRows ? prepared.filter((r) => onlyRows.includes(r.index)) : prepared;
+  const toRun = onlyRows ? prepared.filter((r) => onlyRows.has(r.index)) : prepared;
   const invalid = toRun.filter((r) => r.errors.length);
   const valid = toRun.filter((r) => !r.errors.length);
   const missing = describe ? missingRequired(describe, effectiveMapping, op) : [];
@@ -96,7 +96,7 @@ export function ImportPage() {
     setProgress(0);
     setDownloaded(false);
     stopRef.current = false;
-    const prior = onlyRows && results ? results.filter((r) => !onlyRows.includes(r.index)) : [];
+    const prior = onlyRows && results ? results.filter((r) => !onlyRows.has(r.index)) : [];
     const res = await runImport(
       sf,
       describe!.name,
@@ -380,7 +380,7 @@ export function ImportPage() {
                     headers={headers}
                     onDownload={downloadResults}
                     onRetry={(failed) => {
-                      setOnlyRows(failed);
+                      setOnlyRows(new Set(failed));
                       setResults(results);
                       setConfirming(true);
                     }}
@@ -395,13 +395,13 @@ export function ImportPage() {
       {confirming && describe && (
         <ConfirmRun
           op={op}
-          count={(onlyRows ? prepared.filter((r) => onlyRows.includes(r.index) && !r.errors.length) : valid).length}
+          count={valid.length}
           object={describe.label}
           isProd={isProd}
           orgName={st.org?.Name ?? ""}
           onCancel={() => (setConfirming(false), setOnlyRows(null))}
           onRun={run}
-          clears={(onlyRows ? prepared.filter((r) => onlyRows.includes(r.index) && !r.errors.length) : valid).reduce((acc, r) => {
+          clears={valid.reduce((acc, r) => {
             for (const [k, v] of Object.entries(r.values)) if (v === null) acc[k] = (acc[k] ?? 0) + 1;
             return acc;
           }, {} as Record<string, number>)}
