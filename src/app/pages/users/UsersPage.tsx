@@ -51,10 +51,21 @@ type Sort = "name" | "login";
 function UserList() {
   const sf = orgState.value!.sf;
   const me = orgState.value!.user;
-  const [q, setQ] = useState(() => route.value.params.get("q") ?? "");
-  const [status, setStatus] = useState<Status>("active");
-  const [sort, setSort] = useState<Sort>("name");
-  const [allTypes, setAllTypes] = useState(false);
+  const p0 = route.value.params;
+  const [q, setQ] = useState(() => p0.get("q") ?? "");
+  const [status, setStatus] = useState<Status>(() => (p0.get("status") as Status) || "active");
+  const [sort, setSort] = useState<Sort>(() => (p0.get("sort") as Sort) || "name");
+  const [allTypes, setAllTypes] = useState(() => p0.get("types") === "all");
+  // Keep the list state in the URL so returning from a user restores it.
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (q) p.set("q", q);
+    if (status !== "active") p.set("status", status);
+    if (sort !== "name") p.set("sort", sort);
+    if (allTypes) p.set("types", "all");
+    const qs = p.toString();
+    navigate("#/users" + (qs ? "?" + qs : ""), true);
+  }, [q, status, sort, allTypes]);
   const [rows, setRows] = useState<UserRow[] | null>(null);
   const [frozen, setFrozen] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);

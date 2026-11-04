@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
-import { Bug, ChevronLeft, Database, Download, FileText, KeyRound, LogIn, Settings2, Snowflake, Sun } from "lucide-preact";
+import { Bug, ChevronLeft, Database, Download, FileText, KeyRound, LogIn, RefreshCw, Settings2, Snowflake, Sun } from "lucide-preact";
 import { orgState } from "../../../lib/org";
 import { SfError } from "../../../lib/sf";
 import type { SfRecord } from "../../../lib/types";
@@ -429,6 +429,13 @@ function DebugCard({ userId, name }: { userId: string; name: string }) {
 
   const active = !!flag && Date.parse(flag.ExpirationDate) > Date.now();
 
+  // While logging is on, pick up new logs every 15 s (only when this tab is visible).
+  useEffect(() => {
+    if (!active) return;
+    const h = setInterval(() => document.visibilityState === "visible" && setNonce((n) => n + 1), 15_000);
+    return () => clearInterval(h);
+  }, [active]);
+
   /** Use the Developer Console's debug level when it exists, otherwise create a sensible one. */
   const debugLevelId = async () => {
     const existing = await sf.query<{ Id: string }>(`SELECT Id FROM DebugLevel WHERE DeveloperName IN ('SFDC_DevConsole', 'SIE_Debug') ORDER BY DeveloperName LIMIT 1`, { tooling: true });
@@ -444,9 +451,11 @@ function DebugCard({ userId, name }: { userId: string; name: string }) {
   const enable = async (minutes = 30) => {
     setBusy(true);
     const start = new Date();
-    const end = new Date(start.getTime() + minutes * 60_000);
+    // Extending adds to the current expiry; trace flags can last at most 24 hours.
+    const from = active ? Math.max(Date.now(), Date.parse(flag!.ExpirationDate)) : Date.now();
+    const end = new Date(Math.min(from + minutes * 60_000, Date.now() + 24 * 3600_000 - 60_000));
     try {
-      if (flag) await sf.updateRecord("TraceFlag", flag.Id, { StartDate: start.toISOString(), ExpirationDate: end.toISOString() }, true);
+      if (flag) await sf.updateRecord("TraceFlag", flag.Id, active ? { ExpirationDate: end.toISOString() } : { StartDate: start.toISOString(), ExpirationDate: end.toISOString() }, true);
       else await sf.createRecord("TraceFlag", { TracedEntityId: userId, DebugLevelId: await debugLevelId(), LogType: "USER_DEBUG", StartDate: start.toISOString(), ExpirationDate: end.toISOString() }, true);
       toast("success", `Debug logging on for ${name}`, `Until ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Logs appear here as they're written.`);
       setNonce((n) => n + 1);
@@ -475,8 +484,8 @@ function DebugCard({ userId, name }: { userId: string; name: string }) {
     <section class="card">
       <div class="card__head">
         <span class="card__title">Debug logs</span>
-        <Button size="sm" variant="ghost" icon aria-label="Refresh logs" data-tip="Refresh" onClick={() => setNonce((n) => n + 1)} style={{ marginLeft: "auto" }}>
-          <Bug />
+        <Button size="sm" variant="ghost" icon aria-label="Refresh logs" data-tip="Refresh" data-tip-pos="left" onClick={() => setNonce((n) => n + 1)} style={{ marginLeft: "auto" }}>
+          <RefreshCw />
         </Button>
       </div>
       <div class={"udebug" + (active ? " is-on" : "")}>

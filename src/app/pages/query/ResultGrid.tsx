@@ -47,6 +47,8 @@ export interface GridView {
   columns: string[];
   rows: FlatRow[];
   filtered: boolean;
+  /** Select and scroll to the row with this record Id (used by the failed-rows list). */
+  scrollToId?: (id: string) => void;
 }
 
 let gridSeq = 0;
@@ -103,7 +105,22 @@ export function ResultGrid({ records, filter, viewRef, edit }: { records: SfReco
     return list;
   }, [rows, columns, filter, sort]);
 
-  if (viewRef) viewRef.current = { columns, rows: view.map((x) => x.r), filtered: view.length !== rows.length };
+  if (viewRef)
+    viewRef.current = {
+      columns,
+      rows: view.map((x) => x.r),
+      filtered: view.length !== rows.length,
+      scrollToId: (id) => {
+        const r = view.findIndex((x) => x.r.Id === id);
+        if (r < 0) return;
+        setSel({ r, c: 0 });
+        const el = scrollRef.current;
+        if (el) {
+          el.scrollTop = Math.max(0, r * ROW_H - el.clientHeight / 3);
+          el.focus();
+        }
+      },
+    };
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -201,7 +218,7 @@ export function ResultGrid({ records, filter, viewRef, edit }: { records: SfReco
         ref={scrollRef}
         tabIndex={0}
         role="grid"
-        aria-label="Query results — arrow keys move, Enter shows a cell, Ctrl+Enter opens an Id, Ctrl+C copies"
+        aria-label={edit ? "Query results in edit mode — arrow keys move, Enter edits a cell, Ctrl+S reviews changes" : "Query results — arrow keys move, Enter shows a cell, Ctrl+Enter opens an Id, Ctrl+C copies"}
         aria-rowcount={view.length + 1}
         aria-colcount={columns.length + 1}
         aria-activedescendant={sel ? `${gid}-${sel.r}-${sel.c}` : undefined}
@@ -209,16 +226,16 @@ export function ResultGrid({ records, filter, viewRef, edit }: { records: SfReco
           if (e.target === e.currentTarget && !sel && view.length) setSel({ r: 0, c: 0 });
         }}
       >
-        <div class="grid__inner" style={{ width: totalW, height: ROW_H * (view.length + 1) }}>
+        <div class="grid__inner" style={{ width: totalW, height: ROW_H * (view.length + 1) + (edit && (Object.keys(edit.staged).length || Object.keys(edit.errors).length) ? 76 : 0) }}>
           <div class="grid__head" style={{ gridTemplateColumns: template, width: totalW }} role="row">
             <div class="gh gh--num" role="columnheader">
               #
             </div>
             {columns.map((c) => (
               <div key={c} class={"gh" + (sort?.col === c ? " is-sorted" : "")} role="columnheader" aria-sort={sort?.col === c ? (sort.dir === 1 ? "ascending" : "descending") : "none"} title={c}>
-                <button class="gh__btn" onClick={() => setSort((s) => (s?.col !== c ? { col: c, dir: 1 } : s.dir === 1 ? { col: c, dir: -1 } : null))} aria-label={`Sort by ${c}`}>
+                <button class="gh__btn" onClick={() => setSort((s) => (s?.col !== c ? { col: c, dir: 1 } : s.dir === 1 ? { col: c, dir: -1 } : null))} aria-label={`Sort by ${c}${edit?.fields.has(c) ? ", editable" : ""}`}>
                   <span class="truncate">{c}</span>
-                  {edit?.fields.has(c) && <Pencil class="gh__editable" aria-label="editable" />}
+                  {edit?.fields.has(c) && <Pencil class="gh__editable" aria-hidden="true" />}
                   {sort?.col === c && (sort.dir === 1 ? <ArrowDown /> : <ArrowUp />)}
                 </button>
                 <span
@@ -274,6 +291,7 @@ export function ResultGrid({ records, filter, viewRef, edit }: { records: SfReco
                         onDblClick={() => (f ? setEditing({ r: ri, c: ci }) : openCell(c, v))}
                       >
                         <CellView col={c} v={v} onOpenSub={() => openCell(c, v)} />
+                        {isStaged && <span class="sr-only"> (changed, was {r[c] == null ? "empty" : String(r[c])})</span>}
                         {isEditing && (
                           <div class="gedit" onMouseDown={(e) => e.stopPropagation()}>
                             <Editor

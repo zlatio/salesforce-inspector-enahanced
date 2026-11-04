@@ -7,7 +7,8 @@ import { fmtNumber, plural } from "../../../lib/format";
 import { Badge, Button, Callout, Empty, Meter, Modal, Seg, Spinner, Switch, toast } from "../../../ui";
 import { rankObjects } from "../../Palette";
 import { links, navigate, route } from "../../router";
-import { autoMap, externalIdFields, missingRequired, prepareRows, runImport, writableFields, type BlankMode, type Operation, type RowResult } from "./importer";
+import { autoMap, externalIdFields, missingRequired, prepareRows, runImport, writableFields, type BlankMode, type NumberFormat, type Operation, type RowResult } from "./importer";
+import { useLeaveGuard } from "../../leaveGuard";
 import "./import.css";
 
 const OPS: Array<{ value: Operation; label: string; hint: string }> = [
@@ -30,6 +31,9 @@ export function ImportPage() {
   const [keyField, setKeyField] = useState<string | null>(null);
   const [mapping, setMapping] = useState<Array<string | null>>([]);
   const [blank, setBlank] = useState<BlankMode>("ignore");
+  const [numbersChoice, setNumbers] = useState<NumberFormat | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [downloaded, setDownloaded] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState<RowResult[] | null>(null);
@@ -46,6 +50,8 @@ export function ImportPage() {
   }, [objectName]);
 
   const delimiter: Delimiter = delim === "auto" ? detectDelimiter(text) : delim;
+  // Semicolon files come from European Excel, where the comma is the decimal separator.
+  const numbers: NumberFormat = numbersChoice ?? (delimiter === ";" ? "eu" : "us");
   const table = useMemo(() => (text.trim() ? parseDelimited(text, delimiter) : []), [text, delimiter]);
   const headers = table[0] ?? [];
   const dataRows = useMemo(() => table.slice(1), [table]);
@@ -68,7 +74,10 @@ export function ImportPage() {
   const writable = useMemo(() => (describe ? writableFields(describe, op) : []), [describe, op]);
   const writableNames = useMemo(() => new Set(writable.map((f) => f.name)), [writable]);
   const effectiveMapping = mapping.map((m) => (m && writableNames.has(m) ? m : null));
-  const prepared = useMemo(() => (describe ? prepareRows(dataRows, effectiveMapping, describe, op, blank, op === "upsert" ? keyField : null) : []), [describe, dataRows, effectiveMapping.join("|"), op, blank, keyField]);
+  const prepared = useMemo(
+    () => (describe ? prepareRows(dataRows, effectiveMapping, describe, op, blank, op === "upsert" ? keyField : null, numbers) : []),
+    [describe, dataRows, effectiveMapping.join("|"), op, blank, keyField, numbers],
+  );
   const toRun = onlyRows ? prepared.filter((r) => onlyRows.includes(r.index)) : prepared;
   const invalid = toRun.filter((r) => r.errors.length);
   const valid = toRun.filter((r) => !r.errors.length);
@@ -78,13 +87,29 @@ export function ImportPage() {
   const needsKey = op === "upsert" && keyField && !effectiveMapping.includes(keyField);
   const canRun = !!describe && valid.length > 0 && !needsId && !needsKey && (op === "delete" || mappedCount > 0) && !running;
 
+  // A running import (or results not yet saved anywhere) can't be recovered if the page goes away.
+  useLeaveGuard(running || (!!results && !downloaded && results.some((r) => r.success)), running ? "An import is running. Leave anyway? Rows not yet sent won't be imported." : "Leave without downloading the import results?");
+
   const run = async () => {
     setConfirming(false);
     setRunning(true);
+    setProgress(0);
+    setDownloaded(false);
     stopRef.current = false;
     const prior = onlyRows && results ? results.filter((r) => !onlyRows.includes(r.index)) : [];
-    const res = await runImport(sf, describe!.name, op, valid, op === "upsert" ? keyField : null, (done) => setResults([...prior, ...done]), () => stopRef.current);
-    const all = [...prior, ...res, ...invalid.map((r) => ({ index: r.index, success: false, error: r.errors.join("; ") }))].sort((a, b) => a.index - b.index);
+    const res = await runImport(
+      sf,
+      describe!.name,
+      op,
+      valid,
+      op === "upsert" ? keyField : null,
+      (done) => (setResults([...prior, ...done]), setProgress(done.length)),
+      () => stopRef.current,
+    );
+    // Rows never sent because the run was stopped are reported as "not run", so they can be run later.
+    const ran = new Set(res.map((r) => r.index));
+    const notRun = valid.filter((r) => !ran.has(r.index)).map((r) => ({ index: r.index, success: false, notRun: true, error: "Not run — the import was stopped first" }));
+    const all = [...prior, ...res, ...notRun, ...invalid.map((r) => ({ index: r.index, success: false, error: r.errors.join("; ") }))].sort((a, b) => a.index - b.index);
     setResults(all);
     setOnlyRows(null);
     setRunning(false);
@@ -98,13 +123,14 @@ export function ImportPage() {
     const byIndex = new Map(results.map((r) => [r.index, r]));
     const rows = [[...headers, "Result", "Record Id", "Error"], ...dataRows.map((r, i) => {
       const x = byIndex.get(i);
-      return [...r, x ? (x.success ? (x.created === false ? "Updated" : op === "delete" ? "Deleted" : "Success") : "Failed") : "Not run", x?.id ?? "", x?.error ?? ""];
+      return [...r, x ? (x.success ? (x.created === false ? "Updated" : op === "delete" ? "Deleted" : "Success") : x.notRun ? "Not run" : "Failed") : "Not run", x?.id ?? "", x?.error ?? ""];
     })];
     const url = URL.createObjectURL(new Blob(["﻿" + toCsv(rows)], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
     a.download = `${describe?.name ?? "import"}-${op}-results.csv`;
     a.click();
+    setDownloaded(true);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
@@ -159,6 +185,18 @@ export function ImportPage() {
                         { value: "\t", label: "Tab" },
                         { value: ",", label: "Comma" },
                         { value: ";", label: "Semicolon" },
+                      ]}
+                    />
+                    <span class="muted" style={{ fontSize: "var(--fs-sm)", marginLeft: 8 }}>
+                      Numbers
+                    </span>
+                    <Seg
+                      label="Number format"
+                      value={numbers}
+                      onChange={setNumbers}
+                      options={[
+                        { value: "us", label: "1,234.56" },
+                        { value: "eu", label: "1.234,56" },
                       ]}
                     />
                     <span class="muted" style={{ marginLeft: "auto", fontSize: "var(--fs-sm)" }}>
@@ -283,7 +321,7 @@ export function ImportPage() {
                           <XCircle class="t-danger" /> {plural(invalid.length, "row")} with problems (skipped)
                         </span>
                       )}
-                      {op !== "delete" && (
+                      {(op === "update" || op === "upsert") && (
                         <span class="row" style={{ marginLeft: "auto", gap: 6 }}>
                           <span class="muted" style={{ fontSize: "var(--fs-sm)" }}>
                             Blank cells
@@ -300,12 +338,12 @@ export function ImportPage() {
                         </span>
                       )}
                     </div>
-                    <Preview rows={toRun.slice(0, 100)} describe={describe} mapping={effectiveMapping} op={op} />
-                    {running && results && (
+                    <Preview rows={toRun} describe={describe} mapping={effectiveMapping} op={op} />
+                    {running && (
                       <div class="imp__progress">
-                        <Meter pct={(results.length / Math.max(1, toRun.length)) * 100} large label="Import progress" />
+                        <Meter pct={(progress / Math.max(1, valid.length)) * 100} large label="Import progress" />
                         <span class="tabular muted">
-                          {fmtNumber(results.length)} / {fmtNumber(valid.length)}
+                          {fmtNumber(progress)} / {fmtNumber(valid.length)}
                         </span>
                       </div>
                     )}
@@ -313,7 +351,7 @@ export function ImportPage() {
                       {running ? (
                         <>
                           <Spinner small />
-                          <span class="muted">Running… {fmtNumber(results?.length ?? 0)} done</span>
+                          <span class="muted">Running… {fmtNumber(progress)} done</span>
                           <Button variant="ghost" onClick={() => (stopRef.current = true)}>
                             <Square /> Stop after this batch
                           </Button>
@@ -333,6 +371,7 @@ export function ImportPage() {
                     results={results}
                     op={op}
                     objectName={describe.name}
+                    nameField={describe.fields.find((f) => f.nameField)?.name ?? "Id"}
                     rows={dataRows}
                     headers={headers}
                     onDownload={downloadResults}
@@ -358,6 +397,11 @@ export function ImportPage() {
           orgName={st.org?.Name ?? ""}
           onCancel={() => (setConfirming(false), setOnlyRows(null))}
           onRun={run}
+          clears={(onlyRows ? prepared.filter((r) => onlyRows.includes(r.index) && !r.errors.length) : valid).reduce((acc, r) => {
+            for (const [k, v] of Object.entries(r.values)) if (v === null) acc[k] = (acc[k] ?? 0) + 1;
+            return acc;
+          }, {} as Record<string, number>)}
+          labelOf={(n) => describe.fields.find((f) => f.name === n)?.label ?? n}
         />
       )}
     </div>
@@ -459,37 +503,60 @@ function ObjectPicker({ objects, value, onChange }: { objects: GlobalSObject[]; 
 }
 
 function Preview({ rows, describe, mapping, op }: { rows: ReturnType<typeof prepareRows>; describe: DescribeSObjectResult; mapping: Array<string | null>; op: Operation }) {
+  const [problemsOnly, setProblemsOnly] = useState(false);
   const fields = [...new Set(mapping.filter((m): m is string => !!m && (op !== "delete" || m === "Id")))];
   const label = (n: string) => describe.fields.find((f) => f.name === n)?.label ?? n;
   if (!fields.length) return <Empty title="No mapped columns">Map at least one column to a field.</Empty>;
+  const problems = rows.filter((r) => r.errors.length || r.warnings.length);
+  // Rows with problems first, so they're visible however long the file is.
+  const ordered = [...(problemsOnly ? problems : [...problems, ...rows.filter((r) => !r.errors.length && !r.warnings.length)])];
+  const shown = ordered.slice(0, 100);
   return (
-    <div class="imp__preview">
-      <table class="table">
-        <thead>
-          <tr>
-            <th class="imp__rownum">#</th>
-            {fields.map((f) => (
-              <th key={f} title={f}>
-                {label(f)}
-              </th>
-            ))}
-            <th>Check</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.index} class={r.errors.length ? "is-bad" : ""}>
-              <td class="imp__rownum">{r.index + 1}</td>
+    <div class="stack" style={{ gap: 8 }}>
+      {problems.length > 0 && (
+        <div class="row">
+          <Switch checked={problemsOnly} onChange={setProblemsOnly}>
+            Problems only ({problems.length})
+          </Switch>
+          {ordered.length > 100 && <span class="muted" style={{ fontSize: "var(--fs-sm)", marginLeft: "auto" }}>Showing 100 of {fmtNumber(ordered.length)} rows</span>}
+        </div>
+      )}
+      <div class="imp__preview">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="imp__rownum">#</th>
               {fields.map((f) => (
-                <td key={f} class="truncate">
-                  {r.values[f] === undefined ? <span class="muted">—</span> : r.values[f] === null ? <span class="muted">(clear)</span> : String(r.values[f])}
-                </td>
+                <th key={f} title={f}>
+                  {label(f)}
+                </th>
               ))}
-              <td class="imp__check">{r.errors.length ? <span class="t-danger">{r.errors.join("; ")}</span> : <Check class="t-success" aria-label="OK" />}</td>
+              <th>Check</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {shown.map((r) => (
+              <tr key={r.index} class={r.errors.length ? "is-bad" : r.warnings.length ? "is-warn" : ""}>
+                <td class="imp__rownum">{r.index + 1}</td>
+                {fields.map((f) => (
+                  <td key={f} class="truncate">
+                    {r.values[f] === undefined ? <span class="muted">—</span> : r.values[f] === null ? <span class="muted">(clear)</span> : String(r.values[f])}
+                  </td>
+                ))}
+                <td class="imp__check">
+                  {r.errors.length ? (
+                    <span class="t-danger">{r.errors.join("; ")}</span>
+                  ) : r.warnings.length ? (
+                    <span class="t-warning">{r.warnings.join("; ")}</span>
+                  ) : (
+                    <Check class="t-success" aria-label="OK" />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -498,6 +565,7 @@ function Results({
   results,
   op,
   objectName,
+  nameField,
   rows,
   headers,
   onDownload,
@@ -506,6 +574,7 @@ function Results({
   results: RowResult[];
   op: Operation;
   objectName: string;
+  nameField: string;
   rows: string[][];
   headers: string[];
   onDownload: () => void;
@@ -513,8 +582,9 @@ function Results({
 }) {
   const [onlyFailed, setOnlyFailed] = useState(false);
   const ok = results.filter((r) => r.success);
-  const failed = results.filter((r) => !r.success);
-  const shown = onlyFailed ? failed : results;
+  const failed = results.filter((r) => !r.success && !r.notRun);
+  const notRun = results.filter((r) => r.notRun);
+  const shown = onlyFailed ? [...failed, ...notRun] : results;
   const ids = ok.map((r) => r.id).filter(Boolean) as string[];
   return (
     <>
@@ -528,11 +598,21 @@ function Results({
             <XCircle class="t-danger" /> {plural(failed.length, "row")} failed
           </span>
         )}
+        {notRun.length > 0 && (
+          <span class="imp__stat">
+            <Square class="muted" /> {plural(notRun.length, "row")} not run
+          </span>
+        )}
         <span class="row" style={{ marginLeft: "auto", gap: 8 }}>
           {failed.length > 0 && (
             <Switch checked={onlyFailed} onChange={setOnlyFailed}>
               Failed only
             </Switch>
+          )}
+          {notRun.length > 0 && (
+            <Button size="sm" variant="primary" onClick={() => onRetry(notRun.map((r) => r.index))}>
+              <Play /> Run remaining {fmtNumber(notRun.length)}
+            </Button>
           )}
           {failed.length > 0 && (
             <Button size="sm" onClick={() => onRetry(failed.map((r) => r.index))}>
@@ -540,7 +620,7 @@ function Results({
             </Button>
           )}
           {op !== "delete" && ids.length > 0 && (
-            <Button size="sm" onClick={() => navigate(links.query(`SELECT Id, Name, LastModifiedDate FROM ${objectName} WHERE Id IN ('${ids.slice(0, 500).join("','")}')`))}>
+            <Button size="sm" onClick={() => navigate(links.query(`SELECT Id${nameField !== "Id" ? `, ${nameField}` : ""}, LastModifiedDate FROM ${objectName} WHERE Id IN ('${ids.slice(0, 500).join("','")}')`))}>
               <TerminalSquare /> Query {ids.length > 500 ? "first 500" : "these"}
             </Button>
           )}
@@ -564,7 +644,9 @@ function Results({
             {shown.slice(0, 500).map((r) => (
               <tr key={r.index} class={r.success ? "" : "is-bad"}>
                 <td class="imp__rownum">{r.index + 1}</td>
-                <td>{r.success ? <Badge tone="success">{op === "delete" ? "Deleted" : r.created === false ? "Updated" : op === "update" ? "Updated" : "Created"}</Badge> : <Badge tone="danger">Failed</Badge>}</td>
+                <td>
+                  {r.success ? <Badge tone="success">{op === "delete" ? "Deleted" : r.created === false ? "Updated" : op === "update" ? "Updated" : "Created"}</Badge> : r.notRun ? <Badge>Not run</Badge> : <Badge tone="danger">Failed</Badge>}
+                </td>
                 <td class="mono">{r.id && op !== "delete" ? <a href={links.id(r.id)}>{r.id}</a> : (r.id ?? "—")}</td>
                 <td class="truncate">{rows[r.index]?.[0] ?? ""}</td>
                 <td class="imp__err">{r.error ?? ""}</td>
@@ -573,11 +655,33 @@ function Results({
           </tbody>
         </table>
       </div>
+      {shown.length > 500 && <div class="muted" style={{ fontSize: "var(--fs-sm)" }}>Showing 500 of {fmtNumber(shown.length)} rows — download the results for all of them.</div>}
     </>
   );
 }
 
-function ConfirmRun({ op, count, object, isProd, orgName, onCancel, onRun }: { op: Operation; count: number; object: string; isProd: boolean; orgName: string; onCancel: () => void; onRun: () => void }) {
+function ConfirmRun({
+  op,
+  count,
+  object,
+  isProd,
+  orgName,
+  onCancel,
+  onRun,
+  clears,
+  labelOf,
+}: {
+  op: Operation;
+  count: number;
+  object: string;
+  isProd: boolean;
+  orgName: string;
+  onCancel: () => void;
+  onRun: () => void;
+  clears: Record<string, number>;
+  labelOf: (n: string) => string;
+}) {
+  const totalClears = Object.values(clears).reduce((a, b) => a + b, 0);
   // Typed confirmation for anything destructive or in production.
   const word = op === "delete" ? "delete" : isProd ? "production" : null;
   const [typed, setTyped] = useState("");
@@ -603,6 +707,16 @@ function ConfirmRun({ op, count, object, isProd, orgName, onCancel, onRun }: { o
           {isProd ? <span class="t-prod"> (production)</span> : null}. Rows succeed or fail individually; you'll get a result for every row.
         </p>
         {op === "delete" && <Callout tone="warning">Deleted records go to the Recycle Bin, where they can be restored for 15 days.</Callout>}
+        {totalClears > 0 && (
+          <Callout tone="warning" title={`Blank cells will clear ${fmtNumber(totalClears)} ${totalClears === 1 ? "value" : "values"}`}>
+            In{" "}
+            {Object.entries(clears)
+              .sort((a, b) => b[1] - a[1])
+              .map(([k, n]) => `${labelOf(k)} (${fmtNumber(n)})`)
+              .join(", ")}
+            . Choose “Leave unchanged” to keep existing values.
+          </Callout>
+        )}
         {word && (
           <label class="stack" style={{ gap: 6 }}>
             <span class="subtle">

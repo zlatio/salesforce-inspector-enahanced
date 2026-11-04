@@ -3,6 +3,24 @@ import type { DescribeField, DescribeSObjectResult } from "../../../lib/types";
 
 export type Operation = "insert" | "update" | "upsert" | "delete";
 export type BlankMode = "ignore" | "null";
+/** "us" = 1,234.56 · "eu" = 1.234,56 */
+export type NumberFormat = "us" | "eu";
+
+/** Parse a number in the chosen format; anything ambiguous is an error rather than a silent guess. */
+function parseNumber(raw: string, fmt: NumberFormat): number {
+  let s = raw.replace(/\s/g, "").replace(/%$/, "").replace(/^[$£€]/, "");
+  if (fmt === "us") {
+    if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, "");
+    else if (s.includes(",")) throw new Error(`“${raw}” isn’t in 1,234.56 format. If this file uses comma decimals, switch Numbers to 1.234,56`);
+  } else {
+    if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+    else if (/^-?\d+(,\d+)?$/.test(s)) s = s.replace(",", ".");
+    else if (s.includes(".") || s.includes(",")) throw new Error(`“${raw}” isn’t in 1.234,56 format. If this file uses dot decimals, switch Numbers to 1,234.56`);
+  }
+  const n = Number(s);
+  if (!isFinite(n) || s === "") throw new Error(`“${raw}” isn't a number`);
+  return n;
+}
 
 /** Normalise a header or label for fuzzy matching: "Account Name" ≈ "account_name" ≈ "AccountName". */
 const norm = (s: string) => s.toLowerCase().replace(/__c$/, "").replace(/[^a-z0-9]/g, "");
@@ -47,7 +65,7 @@ export function externalIdFields(d: DescribeSObjectResult): DescribeField[] {
 const ID_RE = /^[a-zA-Z0-9]{15}([a-zA-Z0-9]{3})?$/;
 
 /** Convert a cell to the API value for a field. Returns undefined to omit the field. Throws with a readable message. */
-export function convert(f: DescribeField, raw: string, blank: BlankMode): unknown {
+export function convert(f: DescribeField, raw: string, blank: BlankMode, numbers: NumberFormat = "us"): unknown {
   const s = raw.trim();
   if (s === "") return blank === "null" && f.name !== "Id" ? null : undefined;
   switch (f.type) {
@@ -61,17 +79,17 @@ export function convert(f: DescribeField, raw: string, blank: BlankMode): unknow
       throw new Error(`“${s}” isn't true/false`);
     case "int":
     case "long": {
-      const n = Number(s.replace(/[\s,]/g, ""));
+      const n = parseNumber(s, numbers);
       if (!Number.isInteger(n)) throw new Error(`“${s}” isn't a whole number`);
       return n;
     }
     case "double":
     case "currency":
-    case "percent": {
-      const n = Number(s.replace(/[\s,%]/g, "").replace(/^[$£€]/, ""));
-      if (!isFinite(n)) throw new Error(`“${s}” isn't a number`);
-      return n;
-    }
+    case "percent":
+      return parseNumber(s, numbers);
+    case "email":
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s)) throw new Error(`“${s}” isn't an email address`);
+      return s;
     case "date": {
       const m = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(s);
       if (!m) throw new Error(`Use YYYY-MM-DD for dates (got “${s}”)`);
@@ -100,29 +118,42 @@ export interface PreparedRow {
   index: number;
   values: Record<string, unknown>;
   errors: string[];
+  /** Problems that may still succeed (e.g. a required field blank on upsert, which only matters for new records). */
+  warnings: string[];
 }
 
+const requiredOnCreate = (f: DescribeField) => f.createable && !f.nillable && !f.defaultedOnCreate && f.type !== "boolean";
+
 /** Turn mapped rows into API payloads, collecting per-row validation errors. */
-export function prepareRows(rows: string[][], mapping: Array<string | null>, d: DescribeSObjectResult, op: Operation, blank: BlankMode, keyField: string | null): PreparedRow[] {
+export function prepareRows(rows: string[][], mapping: Array<string | null>, d: DescribeSObjectResult, op: Operation, blank: BlankMode, keyField: string | null, numbers: NumberFormat = "us"): PreparedRow[] {
   const fieldBy = new Map(d.fields.map((f) => [f.name, f]));
+  const mapped = mapping.filter((m): m is string => !!m).map((m) => fieldBy.get(m)!);
   return rows.map((cells, index) => {
     const values: Record<string, unknown> = {};
     const errors: string[] = [];
+    const warnings: string[] = [];
     mapping.forEach((fieldName, col) => {
       if (!fieldName) return;
       if (op === "delete" && fieldName !== "Id") return;
       const f = fieldBy.get(fieldName)!;
       try {
-        const v = convert(f, cells[col] ?? "", blank);
+        const v = convert(f, cells[col] ?? "", op === "insert" ? "ignore" : blank, numbers);
         if (v !== undefined) values[fieldName] = v;
       } catch (e) {
         errors.push(`${f.label}: ${(e as Error).message}`);
       }
     });
+    // Required fields that are mapped but blank in this row.
+    for (const f of mapped) {
+      if (f.name === "Id" || values[f.name] != null) continue;
+      if (op === "insert" && requiredOnCreate(f)) errors.push(`${f.label} is required`);
+      else if (op === "upsert" && requiredOnCreate(f) && !(f.name in values)) warnings.push(`${f.label} is blank — required if this creates a new record`);
+      if ((op === "update" || op === "upsert") && values[f.name] === null && !f.nillable && f.type !== "boolean") errors.push(`${f.label} can't be cleared`);
+    }
     if ((op === "update" || op === "delete") && !values.Id) errors.push("Missing record Id");
     if (op === "upsert" && keyField && (values[keyField] == null || values[keyField] === "")) errors.push(`Missing ${keyField}`);
     if (op === "insert") delete values.Id;
-    return { index, values, errors };
+    return { index, values, errors, warnings };
   });
 }
 
@@ -136,6 +167,8 @@ export function missingRequired(d: DescribeSObjectResult, mapping: Array<string 
 export interface RowResult {
   index: number;
   success: boolean;
+  /** Skipped because the run was stopped before reaching it. */
+  notRun?: boolean;
   id?: string;
   created?: boolean;
   error?: string;

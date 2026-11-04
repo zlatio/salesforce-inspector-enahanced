@@ -81,12 +81,17 @@ function recordNameFromTitle(title: string | null | undefined): { name: string; 
 export function Popup() {
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const lastUrl = useRef<string | null>(null);
+  const seq = useRef(0);
+  // The side panel belongs to one browser window and follows only that window's active tab.
+  const myWindow = useRef<number | undefined>(undefined);
 
   const detect = useCallback(async () => {
+    const mine = ++seq.current;
     let pageUrl = params.get("url") ?? "";
     let pageTitle = params.get("title");
     if (!pageUrl && chrome.tabs?.query) {
-      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      if (isPanel && myWindow.current == null) myWindow.current = (await chrome.windows.getCurrent()).id;
+      const [tab] = await chrome.tabs.query(isPanel && myWindow.current != null ? { active: true, windowId: myWindow.current } : { active: true, currentWindow: true });
       pageUrl = tab?.url ?? "";
       pageTitle = tab?.title ?? null;
     }
@@ -95,12 +100,18 @@ export function Popup() {
     if (key === lastUrl.current && isPanel) return;
     lastUrl.current = key;
     const host = pageUrl ? await resolveApiHost(pageUrl) : null;
-    if (!host) return setPhase({ kind: "nosf", recent: await loadRecentOrgs() });
+    // A slower, older detection must never overwrite a newer one.
+    const current = () => mine === seq.current;
+    if (!host) {
+      const recent = await loadRecentOrgs();
+      if (current()) setPhase({ kind: "nosf", recent });
+      return;
+    }
     try {
       const st = await connectCached(host);
-      setPhase({ kind: "ready", st, ctx: parsePageContext(pageUrl), title: recordNameFromTitle(pageTitle) });
+      if (current()) setPhase({ kind: "ready", st, ctx: parsePageContext(pageUrl), title: recordNameFromTitle(pageTitle) });
     } catch (e) {
-      setPhase({ kind: "error", host, error: e as Error });
+      if (current()) setPhase({ kind: "error", host, error: e as Error });
     }
   }, []);
 
@@ -115,15 +126,14 @@ export function Popup() {
       clearTimeout(timer);
       timer = setTimeout(detect, 250);
     };
-    const onUpdated = (_id: number, info: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) => tab.active && (info.url || info.status === "complete" || info.title) && soon();
-    chrome.tabs.onActivated.addListener(soon);
+    const onActivated = (info: { tabId: number; windowId: number }) => info.windowId === myWindow.current && soon();
+    const onUpdated = (_id: number, info: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) => tab.active && tab.windowId === myWindow.current && (info.url || info.status === "complete" || info.title) && soon();
+    chrome.tabs.onActivated.addListener(onActivated);
     chrome.tabs.onUpdated.addListener(onUpdated);
-    chrome.windows.onFocusChanged.addListener(soon);
     return () => {
       window.removeEventListener("keydown", onKey);
-      chrome.tabs.onActivated.removeListener(soon);
+      chrome.tabs.onActivated.removeListener(onActivated);
       chrome.tabs.onUpdated.removeListener(onUpdated);
-      chrome.windows.onFocusChanged.removeListener(soon);
     };
   }, []);
 
@@ -263,7 +273,7 @@ function Ready({ st, ctx, pageTitle: titleInfo }: { st: OrgState; ctx: PageConte
             <div class="pctx__actions">
               {ctx.recordId ? (
                 <button class="btn btn--primary pctx__main" onClick={() => open(objName ? links.record(objName, ctx.recordId!) : links.id(ctx.recordId!))}>
-                  <Database /> Inspect record <Kbd>↵</Kbd>
+                  <Database /> Inspect record {!isPanel && <Kbd>↵</Kbd>}
                 </button>
               ) : (
                 <button class="btn btn--primary pctx__main" onClick={() => open(links.object(objName!))}>
@@ -279,8 +289,9 @@ function Ready({ st, ctx, pageTitle: titleInfo }: { st: OrgState; ctx: PageConte
           </section>
         )}
 
-        {isPanel && ctx.recordId && (
+        {isPanel && ctx.recordId && objects.length > 0 && (
           <RecordPeek
+            key={ctx.recordId}
             sf={sf}
             objectName={ctxObject?.name}
             recordId={ctx.recordId}
@@ -405,9 +416,9 @@ function SettingsMenu() {
     load("sie.launcher", false).then(setLauncher);
     load<"popup" | "panel">("sie.actionMode", "popup").then(setActionMode);
   }, []);
-  const item = (checked: boolean, label: string, onClick: () => void, close: () => void) => (
+  const item = (checked: boolean, label: string, onClick: () => void, close: () => void, role: "menuitemradio" | "menuitemcheckbox" = "menuitemradio") => (
     <button
-      role="menuitemradio"
+      role={role}
       aria-checked={checked}
       class="menu__item"
       onClick={() => {
@@ -429,16 +440,18 @@ function SettingsMenu() {
     >
       {(close) => (
         <>
-          <div class="menu__label" role="none">
-            Toolbar icon opens
+          <div role="group" aria-labelledby="sie-toolbar-opens">
+            <div class="menu__label" id="sie-toolbar-opens">
+              Toolbar icon opens
+            </div>
+            {item(actionMode === "popup", "Popup", () => (setActionMode("popup"), save("sie.actionMode", "popup")), close)}
+            {chrome.sidePanel && item(actionMode === "panel", "Side panel", () => (setActionMode("panel"), save("sie.actionMode", "panel")), close)}
           </div>
-          {item(actionMode === "popup", "This popup", () => (setActionMode("popup"), save("sie.actionMode", "popup")), close)}
-          {chrome.sidePanel && item(actionMode === "panel", "The side panel", () => (setActionMode("panel"), save("sie.actionMode", "panel")), close)}
-          <div class="menu__sep" />
+          <div class="menu__sep" role="separator" />
           <div class="menu__label" role="none">
             On Salesforce pages
           </div>
-          {item(launcher, "Show the in-page Inspector button", () => (setLauncher(!launcher), save("sie.launcher", !launcher)), close)}
+          {item(launcher, "Show the in-page Inspector button", () => (setLauncher(!launcher), save("sie.launcher", !launcher)), close, "menuitemcheckbox")}
         </>
       )}
     </Menu>

@@ -1,4 +1,5 @@
 import { signal } from "@preact/signals";
+import { confirmLeave } from "./leaveGuard";
 
 export type PageId = "inspect" | "query" | "limits" | "users" | "import";
 
@@ -17,12 +18,25 @@ function parse(hash: string): Route {
 }
 
 export const route = signal<Route>(parse(location.hash));
-window.addEventListener("hashchange", () => (route.value = parse(location.hash)));
+let lastHash = location.hash;
+window.addEventListener("hashchange", () => {
+  const next = parse(location.hash);
+  const cur = route.value;
+  // Moving to another page or record may need confirmation (e.g. an import is running).
+  const leaving = next.page !== cur.page || next.parts.join("/") !== cur.parts.join("/");
+  if (leaving && !confirmLeave()) {
+    history.replaceState(null, "", lastHash);
+    return;
+  }
+  lastHash = location.hash;
+  route.value = next;
+});
 
 export function navigate(hash: string, replace = false) {
   const h = hash.startsWith("#") ? hash : "#" + hash;
   if (replace) {
     history.replaceState(null, "", h);
+    lastHash = h;
     route.value = parse(h);
   } else location.hash = h;
 }

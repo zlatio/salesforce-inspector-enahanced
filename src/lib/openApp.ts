@@ -9,7 +9,14 @@ export async function openAppTab(url: string, opts: { forceNew?: boolean; index?
     const want = new URL(url);
     const contexts = (await chrome.runtime.getContexts?.({ contextTypes: [chrome.runtime.ContextType.TAB] }).catch(() => [])) ?? [];
     const existing = contexts.find((c) => c.documentUrl?.startsWith(chrome.runtime.getURL("app.html")) && new URL(c.documentUrl).searchParams.get("host") === want.searchParams.get("host"));
+    // Don't navigate a tab that's in the middle of something (e.g. a running import).
+    let busy: unknown = null;
     if (existing && existing.tabId >= 0) {
+      const key = `sie.busy.${existing.tabId}`;
+      const got = (await chrome.storage.session?.get(key).catch(() => null)) as Record<string, unknown> | null;
+      busy = got?.[key] ?? null;
+    }
+    if (existing && existing.tabId >= 0 && !busy) {
       await chrome.tabs.update(existing.tabId, { url, active: true });
       if (existing.windowId >= 0) await chrome.windows?.update(existing.windowId, { focused: true });
       return;

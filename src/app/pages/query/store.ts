@@ -109,3 +109,40 @@ export function saveQuery(name: string, soql: string, tooling: boolean) {
   saved.value = [q, ...saved.value];
   return q;
 }
+
+
+// ---- Staged cell edits (bulk edit), per query tab --------------------------------------------
+// Kept in this browser tab's session so switching query tabs, re-running or navigating away never
+// silently drops them; cleared only by Discard or a successful save.
+export interface TabGridEdit {
+  staged: Record<string, Record<string, unknown>>;
+  errors: Record<string, string>;
+}
+const GRID_KEY = "sie.gridEdits";
+function loadGridEdits(): Record<string, TabGridEdit> {
+  try {
+    return JSON.parse(sessionStorage.getItem(GRID_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+export const gridEdits = signal<Record<string, TabGridEdit>>(loadGridEdits());
+gridEdits.subscribe((v) => {
+  try {
+    sessionStorage.setItem(GRID_KEY, JSON.stringify(v));
+  } catch {
+    /* ignore */
+  }
+});
+export const EMPTY_GRID_EDIT: TabGridEdit = { staged: {}, errors: {} };
+export function updateGridEdit(tabId: string, fn: (e: TabGridEdit) => TabGridEdit) {
+  const next = fn(gridEdits.value[tabId] ?? EMPTY_GRID_EDIT);
+  const all = { ...gridEdits.value };
+  if (!Object.keys(next.staged).length && !Object.keys(next.errors).length) delete all[tabId];
+  else all[tabId] = next;
+  gridEdits.value = all;
+}
+export const clearGridEdit = (tabId: string) => updateGridEdit(tabId, () => EMPTY_GRID_EDIT);
+export function gridChangeCount(tabId: string) {
+  return Object.values(gridEdits.value[tabId]?.staged ?? {}).reduce((n, x) => n + Object.keys(x).length, 0);
+}

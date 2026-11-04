@@ -471,3 +471,8 @@ html:has(.popup--embedded) body {
 .peek__row:focus-within .peek__open {
   opacity: 1;
 }
+
+/* Keep keyboard focus clear of the sticky header and footer in the side panel. */
+html:has(.popup--panel) {
+  scroll-padding-block: 64px 52px;
+}

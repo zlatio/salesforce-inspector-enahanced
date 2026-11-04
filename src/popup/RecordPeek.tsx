@@ -112,6 +112,7 @@ export function RecordPeek({ sf, objectName, recordId, onOpenField }: { sf: Sf; 
                   <button
                     class={"peek__api mono truncate" + (copied === f.name ? " is-copied" : "")}
                     title="Copy API name"
+                    aria-label={`Copy API name ${f.name}`}
                     onClick={() => {
                       copyText(f.name);
                       announce(`Copied ${f.name}`);

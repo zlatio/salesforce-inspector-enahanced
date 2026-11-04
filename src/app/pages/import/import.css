@@ -5,8 +5,13 @@
   padding-bottom: 40px;
   max-width: 1200px;
 }
+/* Not-yet-relevant steps dim their heading only; controls keep full contrast. */
+.imp__step.is-dim .imp__head .card__title,
+.imp__step.is-dim .imp__num {
+  color: var(--text-3);
+}
 .imp__step.is-dim {
-  opacity: 0.55;
+  border-style: dashed;
 }
 .imp__head {
   gap: 10px;
@@ -187,6 +192,9 @@
 }
 .imp__preview tr.is-bad td {
   background: var(--danger-soft);
+}
+.imp__preview tr.is-warn td {
+  background: var(--warning-soft);
 }
 .imp__rownum {
   width: 44px;

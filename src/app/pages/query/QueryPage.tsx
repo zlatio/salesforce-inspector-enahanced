@@ -46,6 +46,8 @@ import {
   updateTab,
   type QueryTab,
   NEW_TAB_SOQL,
+  clearGridEdit,
+  gridChangeCount,
 } from "./store";
 import "./query.css";
 
@@ -60,6 +62,12 @@ export function QueryPage() {
   const [saving, setSaving] = useState(false);
   const [editorH, setEditorH] = useState(() => Number(localStorage.getItem("sie.query.editorH")) || 190);
   const gridView = useRef<GridView | null>(null);
+  const [pending, setPending] = useState<null | { kind: "run"; tab: QueryTab } | { kind: "close"; id: string } | { kind: "stopEdit" }>(null);
+  const requestClose = (id: string) => {
+    if (gridChangeCount(id) > 0) return setPending({ kind: "close", id });
+    clearGridEdit(id);
+    closeTab(id);
+  };
   const [showCancel, setShowCancel] = useState(false);
 
   // Accept ?q=… from other pages (e.g. “Query this object”): open it in a fresh tab and run.
@@ -75,9 +83,12 @@ export function QueryPage() {
 
   useEffect(() => setFilter(""), [tab.id]);
 
-  const execute = async (t: QueryTab = activeTab.value) => {
+  const execute = async (t: QueryTab = activeTab.value, force = false) => {
     const soql = t.soql.trim();
     if (!soql) return;
+    // Re-running replaces the results, so unsaved cell edits must be discarded deliberately.
+    if (!force && gridChangeCount(t.id) > 0) return setPending({ kind: "run", tab: t });
+    if (force) clearGridEdit(t.id);
     controllers.get(t.id)?.abort();
     const ctrl = new AbortController();
     controllers.set(t.id, ctrl);
@@ -164,6 +175,11 @@ export function QueryPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "s" && ge.on) {
+        e.preventDefault();
+        if (ge.changes) ge.setReviewing(true);
+        return;
+      }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "c") {
         e.preventDefault();
         copyVisible();
@@ -184,7 +200,7 @@ export function QueryPage() {
     else if (e.key === "ArrowLeft") (e.preventDefault(), go(i - 1));
     else if (e.key === "Home") (e.preventDefault(), go(0));
     else if (e.key === "End") (e.preventDefault(), go(list.length - 1));
-    else if (e.key === "Delete") (e.preventDefault(), closeTab(list[i].id));
+    else if (e.key === "Delete") (e.preventDefault(), requestClose(list[i].id));
   };
 
   return (
@@ -219,7 +235,7 @@ export function QueryPage() {
                     tabIndex={active ? 0 : -1}
                     class="qtab__main"
                     onClick={() => (activeTabId.value = t.id)}
-                    onAuxClick={(e) => e.button === 1 && closeTab(t.id)}
+                    onAuxClick={(e) => e.button === 1 && requestClose(t.id)}
                     onKeyDown={(e) => onTabKey(e, i)}
                     title={t.soql.trim() || "Empty query"}
                   >
@@ -231,7 +247,7 @@ export function QueryPage() {
                       </span>
                     )}
                   </button>
-                  <button class="qtab__close" aria-label={`Close ${o ?? "untitled"} tab`} tabIndex={-1} onClick={() => closeTab(t.id)}>
+                  <button class="qtab__close" aria-label={`Close ${o ?? "untitled"} tab`} tabIndex={-1} onClick={() => requestClose(t.id)}>
                     <X />
                   </button>
                 </div>
@@ -292,10 +308,42 @@ export function QueryPage() {
           }}
         />
 
-        <Results run={run} filter={filter} setFilter={setFilter} obj={obj} onMore={loadMore} onCancel={cancel} gridView={gridView} onCopy={copyVisible} ge={ge} />
+        <Results run={run} filter={filter} setFilter={setFilter} obj={obj} onMore={loadMore} onCancel={cancel} gridView={gridView} onCopy={copyVisible} ge={ge} onStopEdit={() => setPending({ kind: "stopEdit" })} />
       </div>
 
       {saving && <SaveDialog tab={tab} onClose={() => setSaving(false)} />}
+      {pending && (
+        <Modal
+          title={pending.kind === "run" ? "Discard unsaved edits and re-run?" : pending.kind === "close" ? "Close tab with unsaved edits?" : "Stop editing?"}
+          onClose={() => setPending(null)}
+          footer={
+            <>
+              <Button onClick={() => setPending(null)} data-autofocus>
+                Keep editing
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  const p = pending;
+                  setPending(null);
+                  if (p.kind === "run") execute(p.tab, true);
+                  else if (p.kind === "close") (clearGridEdit(p.id), closeTab(p.id));
+                  else (ge.discard(), ge.setOn(false));
+                }}
+              >
+                {pending.kind === "run" ? "Discard & run" : pending.kind === "close" ? "Discard & close" : "Discard edits"}
+              </Button>
+            </>
+          }
+        >
+          <div class="modal__body">
+            <p>
+              {plural(gridChangeCount(pending.kind === "close" ? pending.id : pending.kind === "run" ? pending.tab.id : tab.id), "unsaved cell change")} will be lost. Use “Review & save” first to keep{" "}
+              {gridChangeCount(pending.kind === "close" ? pending.id : pending.kind === "run" ? pending.tab.id : tab.id) === 1 ? "it" : "them"}.
+            </p>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -310,8 +358,10 @@ function Results({
   gridView,
   onCopy,
   ge,
+  onStopEdit,
 }: {
   ge: GridEditState;
+  onStopEdit: () => void;
   run: ReturnType<() => (typeof runs.value)[string]> | undefined;
   filter: string;
   setFilter: (s: string) => void;
@@ -355,6 +405,7 @@ function Results({
 
   const countOnly = isCountOnly(run.soql);
   const loaded = run.records.length;
+  const isProd = orgState.value!.env === "production";
   return (
     <div class="qresults">
       <div class="qres__bar">
@@ -422,13 +473,12 @@ function Results({
                 variant={ge.on ? "soft" : "default"}
                 aria-pressed={ge.on}
                 onClick={() => {
-                  if (ge.on && ge.changes && !confirm(`Discard ${ge.changes} unsaved cell changes?`)) return;
-                  if (ge.on) ge.discard();
+                  if (ge.on && ge.changes) return onStopEdit();
                   ge.setOn(!ge.on);
                 }}
                 data-tip={ge.on ? "Stop editing" : "Edit cells, then save in bulk"}
               >
-                <Pencil /> {ge.on ? "Editing" : "Edit"}
+                <Pencil /> {ge.on ? "Editing" : isProd ? "Edit production data" : "Edit"}
               </Button>
             )}
             <ExportMenu run={run} gridView={gridView} />
@@ -461,7 +511,7 @@ function Results({
             </div>
           )}
           <ResultGrid records={run.records} filter={filter} viewRef={gridView} edit={ge.edit} />
-          {obj && <GridEditBar ge={ge} run={run} obj={mainObject(run.soql) ?? obj} />}
+          {mainObject(run.soql) && <GridEditBar ge={ge} run={run} obj={mainObject(run.soql)!} gridView={gridView} />}
         </>
       )}
     </div>
