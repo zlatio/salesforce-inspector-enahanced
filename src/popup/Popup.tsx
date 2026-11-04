@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { ArrowRight, Box, Check, Cloud, Database, ExternalLink, Fingerprint, Gauge, KeyRound, PanelRight, Settings2, SlidersHorizontal, TerminalSquare, Upload, Users, X } from "lucide-preact";
 import { RecordPeek } from "./RecordPeek";
-import { resolveApiHost } from "../lib/auth";
+import { resolveApiHost, toApiHost } from "../lib/auth";
 import { parsePageContext, parsePastedTarget, type PageContext } from "../lib/context";
 import { connectOrg, loadRecentOrgs, shortOrgName, type OrgState, type RecentOrg } from "../lib/org";
 import { apiUsage, SfError } from "../lib/sf";
@@ -48,7 +48,10 @@ async function openSidePanel() {
 }
 
 // Connecting costs a few API calls, so reuse the connection while the side panel follows tabs around.
+// A connection holds the session token it was made with; sessionGen counts session changes so the
+// view built on an old connection is replaced, not just re-rendered.
 const orgCache = new Map<string, Promise<OrgState>>();
+let sessionGen = 0;
 function connectCached(host: string) {
   let p = orgCache.get(host);
   if (!p) {
@@ -69,7 +72,7 @@ if (embedded) {
   new MutationObserver(report).observe(document.body, { childList: true, subtree: true });
 }
 
-type Phase = { kind: "loading" } | { kind: "nosf"; recent: RecentOrg[] } | { kind: "error"; host: string; error: Error } | { kind: "ready"; st: OrgState; ctx: PageContext; title: { name: string; object: string } | null };
+type Phase = { kind: "loading" } | { kind: "nosf"; recent: RecentOrg[] } | { kind: "error"; host: string; error: Error } | { kind: "ready"; st: OrgState; ctx: PageContext; title: { name: string; object: string } | null; gen: number };
 
 /** "Acme Corp | Account | Salesforce" → { name: "Acme Corp", object: "Account" } (Lightning record tab titles). */
 function recordNameFromTitle(title: string | null | undefined): { name: string; object: string } | null {
@@ -113,8 +116,9 @@ export function Popup() {
       return;
     }
     try {
+      const gen = sessionGen;
       const st = await connectCached(host);
-      if (current()) setPhase({ kind: "ready", st, ctx: parsePageContext(pageUrl), title: recordNameFromTitle(pageTitle) });
+      if (current()) setPhase({ kind: "ready", st, ctx: parsePageContext(pageUrl), title: recordNameFromTitle(pageTitle), gen });
     } catch (e) {
       if (current()) setPhase({ kind: "error", host, error: e as Error });
     }
@@ -133,12 +137,25 @@ export function Popup() {
     };
     const onActivated = (info: { tabId: number; windowId: number }) => info.windowId === myWindow.current && soon();
     const onUpdated = (_id: number, info: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) => tab.active && tab.windowId === myWindow.current && (info.url || info.status === "complete" || info.title) && soon();
+    // Logging in again, "Log in as" or a new session replaces the sid cookie: drop that org's cached
+    // connection (it holds the old token) and reconnect.
+    const onCookie = ({ cookie }: chrome.cookies.CookieChangeInfo) => {
+      if (cookie.name !== "sid") return;
+      const host = toApiHost(cookie.domain.replace(/^\./, ""));
+      if (!orgCache.has(host)) return;
+      orgCache.delete(host);
+      sessionGen++;
+      lastUrl.current = null;
+      soon();
+    };
     chrome.tabs.onActivated.addListener(onActivated);
     chrome.tabs.onUpdated.addListener(onUpdated);
+    chrome.cookies.onChanged.addListener(onCookie);
     return () => {
       window.removeEventListener("keydown", onKey);
       chrome.tabs.onActivated.removeListener(onActivated);
       chrome.tabs.onUpdated.removeListener(onUpdated);
+      chrome.cookies.onChanged.removeListener(onCookie);
     };
   }, []);
 
@@ -154,7 +171,7 @@ export function Popup() {
       )}
       {phase.kind === "nosf" && <NoSalesforce recent={phase.recent} />}
       {phase.kind === "error" && <ErrorState host={phase.host} error={phase.error} />}
-      {phase.kind === "ready" && <Ready key={phase.st.sf.host} st={phase.st} ctx={phase.ctx} pageTitle={phase.title} />}
+      {phase.kind === "ready" && <Ready key={`${phase.st.sf.host}#${phase.gen}`} st={phase.st} ctx={phase.ctx} pageTitle={phase.title} />}
       <Toasts />
     </div>
   );
