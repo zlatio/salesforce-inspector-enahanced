@@ -14,7 +14,12 @@ export function parsePageContext(href: string): PageContext {
   } catch {
     return {};
   }
-  const path = decodeURIComponent(url.pathname);
+  let path = url.pathname;
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    /* malformed % escape: match against the raw path */
+  }
   let m: RegExpExecArray | null;
 
   // Lightning record page: /lightning/r/Account/001.../view

@@ -9,10 +9,18 @@ export interface Route {
   params: URLSearchParams;
 }
 
+const decode = (s: string) => {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s; // malformed % escape
+  }
+};
+
 function parse(hash: string): Route {
   const raw = hash.replace(/^#\/?/, "");
   const [path, qs = ""] = raw.split("?");
-  const segs = path.split("/").filter(Boolean).map(decodeURIComponent);
+  const segs = path.split("/").filter(Boolean).map(decode);
   const page = (["inspect", "query", "limits", "users", "import"].includes(segs[0]) ? segs[0] : "inspect") as PageId;
   return { page, parts: segs.slice(1), params: new URLSearchParams(qs) };
 }
