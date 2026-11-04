@@ -101,15 +101,19 @@ export function QueryPage() {
     controllers.get(t.id)?.abort();
     const ctrl = new AbortController();
     controllers.set(t.id, ctrl);
+    // A newer run (or load-more) on this tab owns its state now; a superseded run must not touch it.
+    const current = () => controllers.get(t.id) === ctrl;
     markError(editor.current.view, null);
     const startedAt = performance.now();
     setRun(t.id, { status: "running", soql, tooling: t.tooling, records: [], totalSize: 0, ms: 0, startedAt: Date.now() });
     try {
       const res = await sf.query(soql, { tooling: t.tooling, all: t.all, signal: ctrl.signal });
+      if (!current()) return;
       const ms = performance.now() - startedAt;
       setRun(t.id, { status: "done", soql, tooling: t.tooling, records: res.records, totalSize: res.totalSize, nextRecordsUrl: res.done ? undefined : res.nextRecordsUrl, ms, startedAt: Date.now() });
       addHistory({ soql, tooling: t.tooling, object: mainObject(soql), rows: res.totalSize, at: Date.now() });
     } catch (e) {
+      if (!current()) return;
       if ((e as Error).name === "AbortError") {
         setRun(t.id, (p) => ({ ...p!, status: "cancelled", ms: performance.now() - startedAt }));
         return;
@@ -119,7 +123,7 @@ export function QueryPage() {
       setRun(t.id, { status: "error", soql, tooling: t.tooling, records: [], totalSize: 0, ms: performance.now() - startedAt, error: msg, errorOffset: off, startedAt: Date.now() });
       if (t.id === activeTab.value.id && soql === editor.current.view?.state.doc.toString().trim()) markError(editor.current.view, off);
     } finally {
-      controllers.delete(t.id);
+      if (current()) controllers.delete(t.id);
     }
   };
 
@@ -127,20 +131,25 @@ export function QueryPage() {
     const id = tab.id;
     let r = runs.value[id];
     if (!r?.nextRecordsUrl) return;
+    controllers.get(id)?.abort();
     const ctrl = new AbortController();
     controllers.set(id, ctrl);
+    const current = () => controllers.get(id) === ctrl;
     setRun(id, { ...r, loadingMore: true });
     try {
       do {
         const res = await sf.queryMore(r.nextRecordsUrl!, ctrl.signal);
+        if (!current()) return;
         r = { ...runs.value[id], records: [...runs.value[id].records, ...res.records], nextRecordsUrl: res.done ? undefined : res.nextRecordsUrl, loadingMore: true };
         setRun(id, r);
       } while (all && r.nextRecordsUrl && !ctrl.signal.aborted);
     } catch (e) {
-      if ((e as Error).name !== "AbortError") toast("error", "Couldn't load more rows", (e as Error).message);
+      if (current() && (e as Error).name !== "AbortError") toast("error", "Couldn't load more rows", (e as Error).message);
     } finally {
-      setRun(id, { ...runs.value[id], loadingMore: false });
-      controllers.delete(id);
+      if (current()) {
+        setRun(id, { ...runs.value[id], loadingMore: false });
+        controllers.delete(id);
+      }
     }
   };
 
