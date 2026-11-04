@@ -9,6 +9,7 @@ export function isEditable(f: DescribeField) {
 
 /** Convert an API value into the string an <input> expects. */
 export function toInput(f: DescribeField, v: unknown): string {
+  if (f.type === "boolean") return v === true || v === "true" ? "true" : "false";
   if (v == null) return "";
   switch (f.type) {
     case "datetime": {
@@ -25,7 +26,12 @@ export function toInput(f: DescribeField, v: unknown): string {
 
 /** Convert input text back into the value the REST API wants (or throw a readable error). */
 export function fromInput(f: DescribeField, s: string): unknown {
-  if (f.type === "boolean") return s === "true";
+  if (f.type === "boolean") {
+    const t = s.trim().toLowerCase();
+    if (["true", "yes", "1"].includes(t)) return true;
+    if (["false", "no", "0", ""].includes(t)) return false;
+    throw new Error("Enter true or false");
+  }
   if (s === "") return null;
   switch (f.type) {
     case "int":

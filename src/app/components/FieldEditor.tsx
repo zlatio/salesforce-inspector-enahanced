@@ -101,6 +101,13 @@ export function Editor({ f, value, original, onCommit, onCancel, onTab, onLookup
         {text && !values.some((p) => p.value === text) && <option value={text}>{text}</option>}
       </select>
     );
+  } else if (f.type === "boolean") {
+    control = (
+      <select {...common} class={"select select--sm" + (error ? " is-invalid" : "")} value={text} onChange={(e) => setText((e.target as HTMLSelectElement).value)}>
+        <option value="true">True</option>
+        <option value="false">False</option>
+      </select>
+    );
   } else if (f.type === "multipicklist") {
     const selected = new Set(text ? text.split(";") : []);
     control = (
