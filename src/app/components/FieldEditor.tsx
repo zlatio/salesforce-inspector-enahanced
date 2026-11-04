@@ -4,6 +4,7 @@ import type { DescribeField, LookupNames, SfRecord } from "../../lib/types";
 import { looksLikeId } from "../../lib/sf";
 import { orgState } from "../../lib/org";
 import { fromInput, toInput } from "../../lib/values";
+import { likeEscape } from "../../lib/soql";
 import { Spinner } from "../../ui";
 import "./field-editor.css";
 
@@ -232,7 +233,7 @@ function LookupInput({
     const h = setTimeout(async () => {
       setBusy(true);
       const sf = orgState.value!.sf;
-      const like = term.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/%/g, "\\%").replace(/_/g, "\\_");
+      const like = likeEscape(term);
       const out: LookupHit[] = [];
       for (const obj of f.referenceTo.slice(0, 3)) {
         try {

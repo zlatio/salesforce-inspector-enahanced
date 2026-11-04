@@ -3,6 +3,7 @@ import { ArrowUpRight, RefreshCw } from "lucide-preact";
 import type { Sf } from "../lib/sf";
 import type { DescribeField, DescribeSObjectResult, SfRecord } from "../lib/types";
 import { fmtDate, fmtDateTime, fmtNumber } from "../lib/format";
+import { formatAddress } from "../lib/values";
 import { announce, copyText, SearchInput, Spinner, Switch } from "../ui";
 
 /** Plain-text rendering of a field value for the compact side-panel list. */
@@ -13,11 +14,7 @@ function show(f: DescribeField, v: unknown): { text: string; kind?: "null" | "bo
   if (f.type === "date") return { text: fmtDate(String(v)) };
   if (f.type === "id" || f.type === "reference") return { text: String(v), kind: "mono" };
   if (typeof v === "number") return { text: v.toLocaleString(undefined, { maximumFractionDigits: f.scale || 0 }) + (f.type === "percent" ? "%" : "") };
-  if (typeof v === "object") {
-    const o = v as Record<string, unknown>;
-    const parts = [o.street, [o.city, o.state ?? o.stateCode, o.postalCode].filter(Boolean).join(" "), o.country ?? o.countryCode].filter((x) => x && String(x).trim());
-    return { text: parts.length ? parts.join(", ") : JSON.stringify(v) };
-  }
+  if (typeof v === "object") return { text: formatAddress(v as Record<string, unknown>) || JSON.stringify(v) };
   return { text: String(v) };
 }
 

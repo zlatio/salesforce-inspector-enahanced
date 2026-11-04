@@ -219,6 +219,6 @@ export function soqlLiteral(type: string, v: unknown): string | null {
     case "time":
       return null;
     default:
-      return "'" + String(v).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
+      return "'" + soqlEscape(String(v)) + "'";
   }
 }

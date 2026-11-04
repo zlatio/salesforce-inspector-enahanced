@@ -1,4 +1,5 @@
 import { useEffect } from "preact/hooks";
+import { busyKey } from "../lib/openApp";
 
 // Pages with unsaved, unrecoverable work (e.g. a running import) register a guard. Navigating
 // inside the app asks first; closing the tab triggers the browser's own prompt; and the popup /
@@ -13,7 +14,6 @@ export function confirmLeave(): boolean {
 
 let tabIdPromise: Promise<number | undefined> | null = null;
 const currentTabId = () => (tabIdPromise ??= chrome.tabs?.getCurrent?.().then((t) => t?.id).catch(() => undefined) ?? Promise.resolve(undefined));
-export const busyKey = (tabId: number) => `sie.busy.${tabId}`;
 
 export function useLeaveGuard(active: boolean, message: string) {
   useEffect(() => {

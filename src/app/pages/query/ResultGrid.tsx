@@ -7,6 +7,7 @@ import { copyText, CopyButton, Modal, toast } from "../../../ui";
 import { links, navigate } from "../../router";
 import type { DescribeField } from "../../../lib/types";
 import { Editor } from "../../components/FieldEditor";
+import { sameValue } from "../../../lib/values";
 import { Pencil } from "lucide-preact";
 import { signal } from "@preact/signals";
 
@@ -299,8 +300,7 @@ export function ResultGrid({ records, filter, viewRef, edit }: { records: SfReco
                               value={v}
                               original={r[c]}
                               onCommit={(nv) => {
-                                const same = JSON.stringify(nv ?? null) === JSON.stringify(r[c] ?? null);
-                                edit!.onStage(id!, c, same ? undefined : nv);
+                                edit!.onStage(id!, c, sameValue(nv, r[c]) ? undefined : nv);
                                 setEditing(null);
                                 scrollRef.current?.focus();
                               }}

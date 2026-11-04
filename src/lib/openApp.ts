@@ -1,3 +1,6 @@
+/** chrome.storage.session key marking an Inspector tab as busy (see useLeaveGuard). */
+export const busyKey = (tabId: number) => `sie.busy.${tabId}`;
+
 /**
  * Open an Inspector page, reusing the org's existing Inspector tab unless a new one is requested.
  * Works from the popup and the background worker. runtime.getContexts lists our own extension tabs
@@ -12,7 +15,7 @@ export async function openAppTab(url: string, opts: { forceNew?: boolean; index?
     // Don't navigate a tab that's in the middle of something (e.g. a running import).
     let busy: unknown = null;
     if (existing && existing.tabId >= 0) {
-      const key = `sie.busy.${existing.tabId}`;
+      const key = busyKey(existing.tabId);
       const got = (await chrome.storage.session?.get(key).catch(() => null)) as Record<string, unknown> | null;
       busy = got?.[key] ?? null;
     }
