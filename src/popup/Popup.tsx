@@ -81,12 +81,14 @@ function recordNameFromTitle(title: string | null | undefined): { name: string; 
 export function Popup() {
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const lastUrl = useRef<string | null>(null);
+  // calls: newest detect() started (its tab lookup wins). seq: newest connect in flight (its result wins).
+  const calls = useRef(0);
   const seq = useRef(0);
   // The side panel belongs to one browser window and follows only that window's active tab.
   const myWindow = useRef<number | undefined>(undefined);
 
   const detect = useCallback(async () => {
-    const mine = ++seq.current;
+    const call = ++calls.current;
     let pageUrl = params.get("url") ?? "";
     let pageTitle = params.get("title");
     if (!pageUrl && chrome.tabs?.query) {
@@ -94,11 +96,14 @@ export function Popup() {
       const [tab] = await chrome.tabs.query(isPanel && myWindow.current != null ? { active: true, windowId: myWindow.current } : { active: true, currentWindow: true });
       pageUrl = tab?.url ?? "";
       pageTitle = tab?.title ?? null;
+      if (call !== calls.current) return;
     }
     // Lightning updates the tab title after the URL, so a title change alone is worth a refresh too.
     const key = pageUrl + "|" + (pageTitle ?? "");
+    // A repeat event for the same page (status/title updates) must not cancel the lookup in flight.
     if (key === lastUrl.current && isPanel) return;
     lastUrl.current = key;
+    const mine = ++seq.current;
     const host = pageUrl ? await resolveApiHost(pageUrl) : null;
     // A slower, older detection must never overwrite a newer one.
     const current = () => mine === seq.current;
