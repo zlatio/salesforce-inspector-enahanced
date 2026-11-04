@@ -232,6 +232,20 @@ export class Sf {
     return this.request<null>(this.path(`/sobjects/${type}/${id}`, tooling), { method: "PATCH", body: fields });
   }
 
+  createRecord(type: string, fields: Record<string, unknown>, tooling = false) {
+    return this.request<{ id: string; success: boolean }>(this.path(`/sobjects/${type}/`, tooling), { method: "POST", body: fields });
+  }
+
+  deleteRecord(type: string, id: string, tooling = false) {
+    return this.request<null>(this.path(`/sobjects/${type}/${id}`, tooling), { method: "DELETE" });
+  }
+
+  /** Plain-text resources such as an Apex debug log body. */
+  async getText(path: string): Promise<string> {
+    const r = await this.request<unknown>(path);
+    return typeof r === "string" ? r : JSON.stringify(r, null, 2);
+  }
+
   /**
    * Run many GETs (e.g. COUNT() queries) through the Composite Batch API: 25 per call. Plain Composite
    * would cap query sub-requests at 5 per call.

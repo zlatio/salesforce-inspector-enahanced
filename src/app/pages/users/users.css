@@ -1,0 +1,226 @@
+.users__search {
+  width: 380px;
+}
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: hsl(var(--hue) 45% 32%);
+  background: hsl(var(--hue) 70% 92%);
+}
+:root[data-theme="dark"] .avatar {
+  color: hsl(var(--hue) 70% 82%);
+  background: hsl(var(--hue) 30% 22%);
+}
+
+/* ---------- List ---------- */
+.userlist {
+  align-self: stretch;
+}
+.userlist .table td {
+  height: 48px;
+  max-width: 260px;
+}
+.userlist tr.is-inactive td {
+  color: var(--text-3);
+}
+.ucell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--text);
+}
+.ucell:hover {
+  text-decoration: none;
+}
+.ucell:hover .ucell__name {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ucell__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ucell__name {
+  font-weight: 550;
+}
+.ucell__user {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+.ucell__you {
+  display: inline-flex;
+  align-items: center;
+  height: 17px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 99px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  vertical-align: 3px;
+}
+.badge svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* ---------- Detail ---------- */
+.uhead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.uhead .page__subtitle {
+  margin-top: 6px;
+}
+.ugrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  padding: 0 24px 32px;
+}
+@media (max-width: 1100px) {
+  .ugrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.ugrid__col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.ucard__props {
+  padding: 14px;
+}
+.ulist {
+  max-height: 360px;
+  overflow: auto;
+}
+.ulist__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+.ulist__row:last-child {
+  border-bottom: 0;
+}
+a.ulist__row:hover,
+.ulog--btn:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+.ulist__api {
+  max-width: 45%;
+  font-size: var(--fs-xs);
+}
+.ulist__empty {
+  padding: 16px 14px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+.ulog {
+  font-size: var(--fs-sm);
+}
+.ulog--btn {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: none;
+  text-align: left;
+}
+.ulog__when {
+  flex: none;
+  width: 150px;
+  color: var(--text-2);
+}
+.ulog__ip {
+  font-size: var(--fs-xs);
+}
+.ulog__icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--text-3);
+}
+.ulog__status {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.ulog__size {
+  flex: none;
+  width: 60px;
+  text-align: right;
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.status-dot.is-ok {
+  background: var(--success);
+}
+.status-dot.is-danger {
+  background: var(--danger);
+}
+.udebug {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  font-size: var(--fs-md);
+}
+.udebug.is-on {
+  background: var(--success-soft);
+}
+.udebug__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 25%, transparent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--success) 0%, transparent);
+  }
+}
+.logview {
+  margin: 0;
+  max-height: 58vh;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.logview__debug {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.logview__error {
+  color: var(--danger-text);
+  font-weight: 600;
+}

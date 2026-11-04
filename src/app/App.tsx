@@ -10,6 +10,8 @@ import { Header, Rail } from "./Shell";
 import { InspectorPage } from "./pages/inspector/InspectorPage";
 import { QueryPage } from "./pages/query/QueryPage";
 import { LimitsPage } from "./pages/limits/LimitsPage";
+import { UsersPage } from "./pages/users/UsersPage";
+import { ImportPage } from "./pages/import/ImportPage";
 
 let pendingG = 0;
 
@@ -30,7 +32,7 @@ export function App() {
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !isTyping(e.target) && !document.querySelector("dialog[open]")) {
         // "g" then o / q / l jumps between tools (Alt+number is taken by the browser on Linux/Windows).
         if (pendingG && Date.now() - pendingG < 900) {
-          const dest = { o: "#/inspect", q: "#/query", l: "#/limits" }[e.key.toLowerCase()];
+          const dest = ({ o: "#/inspect", q: "#/query", l: "#/limits", u: "#/users", i: "#/import" } as Record<string, string>)[e.key.toLowerCase()];
           pendingG = 0;
           if (dest) {
             e.preventDefault();
@@ -44,11 +46,11 @@ export function App() {
   }, []);
 
   useSignalEffect(() => {
-    const titles = { inspect: "Objects", query: "Query", limits: "Org Limits" };
+    const titles = { inspect: "Objects", query: "Query", limits: "Org Limits", users: "Users", import: "Data Import" };
     const st = orgState.value;
     const r = route.value;
     // Object and record views set their own, more specific title.
-    if (r.page === "inspect" && r.parts.length) return;
+    if ((r.page === "inspect" || r.page === "users") && r.parts.length) return;
     const org = st?.org?.Name;
     document.title = `${st?.env === "production" ? "[PROD] " : ""}${titles[r.page]}${org ? " · " + org : ""} — Inspector`;
   });
@@ -81,6 +83,8 @@ export function App() {
         {page === "inspect" && <InspectorPage />}
         {page === "query" && <QueryPage />}
         {page === "limits" && <LimitsPage />}
+        {page === "users" && <UsersPage />}
+        {page === "import" && <ImportPage />}
       </main>
       {paletteOpen.value && <Palette />}
       <Toasts />

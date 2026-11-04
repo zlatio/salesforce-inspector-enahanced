@@ -1,7 +1,7 @@
 import { signal } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { Box, Clock, CornerDownLeft, Database, ExternalLink, Fingerprint, Gauge, ListTree, Monitor, Moon, Search, Settings2, Star, Sun, TerminalSquare } from "lucide-preact";
+import { Box, Clock, CornerDownLeft, Database, ExternalLink, Fingerprint, Gauge, ListTree, Monitor, Moon, Search, Settings2, Star, Sun, TerminalSquare, Upload, Users } from "lucide-preact";
 import { orgState } from "../lib/org";
 import { parsePastedTarget } from "../lib/context";
 import { setTheme } from "../lib/theme";
@@ -213,6 +213,8 @@ export function Palette() {
       { id: "c-objects", group: "Go to", icon: <Database />, text: "all objects browse", title: "All objects", hint: <Keys k={["g", "o"]} />, run: () => go(links.objects()) },
       { id: "c-query", group: "Go to", icon: <TerminalSquare />, text: "soql query editor", title: "SOQL query", hint: <Keys k={["g", "q"]} />, run: () => go(links.query()) },
       { id: "c-limits", group: "Go to", icon: <Gauge />, text: "org limits usage licenses", title: "Org limits & usage", hint: <Keys k={["g", "l"]} />, run: () => go(links.limits()) },
+      { id: "c-users", group: "Go to", icon: <Users />, text: "users login as debug logs freeze permission sets", title: "Users", hint: <Keys k={["g", "u"]} />, run: () => go(links.users()) },
+      { id: "c-import", group: "Go to", icon: <Upload />, text: "data import insert update upsert delete csv excel", title: "Data import", hint: <Keys k={["g", "i"]} />, run: () => go(links.import()) },
       ...SETUP.map(([label, path]) => ({
         id: "setup-" + path,
         group: "Salesforce Setup",
@@ -226,6 +228,9 @@ export function Palette() {
       { id: "t-dark", group: "Theme", icon: <Moon />, text: "theme dark", title: "Dark theme", run: () => (setTheme("dark"), close()) },
       { id: "t-system", group: "Theme", icon: <Monitor />, text: "theme system auto", title: "Match system theme", run: () => (setTheme("system"), close()) },
     ];
+    // "user jane" / "users jane" searches users by name.
+    const userQ = /^users?\s+(.+)/i.exec(s);
+    if (userQ) out.unshift({ id: "u-search", group: "Users", icon: <Users />, title: <>Find users matching “{userQ[1]}”</>, run: () => go(links.users(userQ[1])) });
     out.push(...(s ? commands.filter((c) => c.text!.includes(lower)) : commands.filter((c) => c.group === "Go to")));
     return out;
   }, [q, objects, saved, fieldsOf, recent]);

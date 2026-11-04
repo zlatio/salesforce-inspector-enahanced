@@ -5,6 +5,9 @@ import { cellText, flattenRecords, type Cell, type FlatRow, type SubResult } fro
 import type { SfRecord } from "../../../lib/types";
 import { copyText, CopyButton, Modal, toast } from "../../../ui";
 import { links, navigate } from "../../router";
+import type { DescribeField } from "../../../lib/types";
+import { Editor } from "../inspector/FieldsTable";
+import { Pencil } from "lucide-preact";
 import { signal } from "@preact/signals";
 
 /** Datetime display: local time (default) or UTC. Copy/export always keep the raw ISO value. */
@@ -48,7 +51,16 @@ export interface GridView {
 
 let gridSeq = 0;
 
-export function ResultGrid({ records, filter, viewRef }: { records: SfRecord[]; filter: string; viewRef?: { current: GridView | null } }) {
+/** Inline editing for single-object results: which columns are editable, what's staged, and per-row errors. */
+export interface GridEdit {
+  fields: Map<string, DescribeField>;
+  staged: Record<string, Record<string, unknown>>;
+  errors: Record<string, string>;
+  onStage: (id: string, field: string, value: unknown | undefined) => void;
+}
+
+export function ResultGrid({ records, filter, viewRef, edit }: { records: SfRecord[]; filter: string; viewRef?: { current: GridView | null }; edit?: GridEdit }) {
+  const [editing, setEditing] = useState<{ r: number; c: number } | null>(null);
   const [gid] = useState(() => "g" + ++gridSeq);
   const { columns, rows } = useMemo(() => flattenRecords(records), [records]);
   const [widths, setWidths] = useState<Record<string, number>>({});
@@ -112,7 +124,7 @@ export function ResultGrid({ records, filter, viewRef }: { records: SfRecord[]; 
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       // Header buttons and resize handles handle their own keys (Enter sorts, arrows resize).
-      if (!sel || !scrollRef.current?.contains(t) || t.closest(".grid__head")) return;
+      if (!sel || !scrollRef.current?.contains(t) || t.closest(".grid__head") || t.closest(".gedit")) return;
       const move = (dr: number, dc: number) => {
         e.preventDefault();
         const r = Math.max(0, Math.min(view.length - 1, sel.r + dr));
@@ -148,6 +160,7 @@ export function ResultGrid({ records, filter, viewRef }: { records: SfRecord[]; 
         const v = view[sel.r]?.r[col];
         // Ctrl/Cmd+Enter on an Id follows it to the record view; Enter shows the full value.
         if ((e.metaKey || e.ctrlKey) && typeof v === "string" && looksLikeId(v)) navigate(links.id(v));
+        else if (edit?.fields.has(col) && view[sel.r]?.r.Id) setEditing({ r: sel.r, c: sel.c });
         else openCell(col, v);
       }
     };
@@ -205,6 +218,7 @@ export function ResultGrid({ records, filter, viewRef }: { records: SfRecord[]; 
               <div key={c} class={"gh" + (sort?.col === c ? " is-sorted" : "")} role="columnheader" aria-sort={sort?.col === c ? (sort.dir === 1 ? "ascending" : "descending") : "none"} title={c}>
                 <button class="gh__btn" onClick={() => setSort((s) => (s?.col !== c ? { col: c, dir: 1 } : s.dir === 1 ? { col: c, dir: -1 } : null))} aria-label={`Sort by ${c}`}>
                   <span class="truncate">{c}</span>
+                  {edit?.fields.has(c) && <Pencil class="gh__editable" aria-label="editable" />}
                   {sort?.col === c && (sort.dir === 1 ? <ArrowDown /> : <ArrowUp />)}
                 </button>
                 <span
@@ -231,25 +245,51 @@ export function ResultGrid({ records, filter, viewRef }: { records: SfRecord[]; 
             {view.slice(start, end).map(({ r, i }, k) => {
               const ri = start + k;
               return (
-                <div class={"grow-row" + (sel?.r === ri ? " is-selrow" : "")} style={{ gridTemplateColumns: template, width: totalW }} key={i} role="row" aria-rowindex={ri + 2}>
-                  <div class="gc gc--num" role="rowheader">
+                <div
+                  class={"grow-row" + (sel?.r === ri ? " is-selrow" : "") + (edit && r.Id && edit.errors[r.Id as string] ? " is-error" : "")}
+                  style={{ gridTemplateColumns: template, width: totalW }}
+                  key={i}
+                  role="row"
+                  aria-rowindex={ri + 2}
+                >
+                  <div class="gc gc--num" role="rowheader" title={edit && r.Id ? edit.errors[r.Id as string] : undefined}>
                     {i + 1}
                   </div>
                   {columns.map((c, ci) => {
-                    const v = r[c];
+                    const id = r.Id as string | undefined;
+                    const f = edit && id ? edit.fields.get(c) : undefined;
+                    const isStaged = !!f && !!id && c in (edit!.staged[id] ?? {});
+                    const v = isStaged ? (edit!.staged[id!][c] as Cell) : r[c];
                     const selected = sel?.r === ri && sel.c === ci;
+                    const isEditing = editing?.r === ri && editing.c === ci && !!f;
                     return (
                       <div
                         key={c}
                         id={`${gid}-${ri}-${ci}`}
-                        class={"gc" + (selected ? " is-sel" : "") + (typeof v === "number" ? " gc--num-val" : "")}
+                        class={"gc" + (selected ? " is-sel" : "") + (typeof v === "number" ? " gc--num-val" : "") + (f ? " is-editable" : "") + (isStaged ? " is-staged" : "")}
                         role="gridcell"
                         aria-colindex={ci + 2}
                         aria-selected={selected}
                         onMouseDown={() => setSel({ r: ri, c: ci })}
-                        onDblClick={() => openCell(c, v)}
+                        onDblClick={() => (f ? setEditing({ r: ri, c: ci }) : openCell(c, v))}
                       >
                         <CellView col={c} v={v} onOpenSub={() => openCell(c, v)} />
+                        {isEditing && (
+                          <div class="gedit" onMouseDown={(e) => e.stopPropagation()}>
+                            <Editor
+                              f={f!}
+                              value={v}
+                              original={r[c]}
+                              onCommit={(nv) => {
+                                const same = JSON.stringify(nv ?? null) === JSON.stringify(r[c] ?? null);
+                                edit!.onStage(id!, c, same ? undefined : nv);
+                                setEditing(null);
+                                scrollRef.current?.focus();
+                              }}
+                              onCancel={() => (setEditing(null), scrollRef.current?.focus())}
+                            />
+                          </div>
+                        )}
                       </div>
                     );
                   })}

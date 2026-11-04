@@ -1,0 +1,217 @@
+.imp {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 40px;
+  max-width: 1200px;
+}
+.imp__step.is-dim {
+  opacity: 0.55;
+}
+.imp__head {
+  gap: 10px;
+}
+.imp__num {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  flex: none;
+}
+.imp__num.is-done {
+  background: var(--success);
+  color: #fff;
+}
+.imp__num svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Data */
+.imp__drop {
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.imp__drop.is-over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.imp__drop-input {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  padding: 14px;
+  border: 0;
+  background: transparent;
+  resize: vertical;
+  font-size: var(--fs-sm);
+  outline: none;
+}
+.imp__drop-input::placeholder {
+  color: var(--text-3);
+}
+.imp__drop:focus-within {
+  border-color: var(--focus);
+  border-style: solid;
+}
+.imp__drop-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px dashed var(--border);
+  font-size: var(--fs-sm);
+}
+.imp__drop-actions > svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+}
+.imp__paste {
+  font-size: var(--fs-xs);
+  max-height: 220px;
+  white-space: pre;
+}
+
+/* Target */
+.imp__target {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.imp__field {
+  gap: 6px;
+}
+.imp__label {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-2);
+}
+.imp__picker {
+  width: 340px;
+}
+.imp__target .select {
+  min-width: 260px;
+}
+
+/* Mapping */
+.imp__map {
+  padding: 4px 0 8px;
+}
+.imp__maprow {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(140px, 1.2fr) 20px minmax(240px, 1.6fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 4px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.imp__maprow--head {
+  min-height: 30px;
+  background: var(--surface-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-3);
+  border-top: 1px solid var(--border-subtle);
+}
+.imp__col {
+  font-weight: 500;
+}
+.imp__sample {
+  font-size: var(--fs-xs);
+}
+.imp__arrow {
+  width: 14px;
+  height: 14px;
+  color: var(--text-4);
+}
+.imp__maprow.is-mapped .imp__arrow {
+  color: var(--accent);
+}
+.imp__maprow:not(.is-mapped) .select {
+  color: var(--text-3);
+}
+.imp__warn svg {
+  width: 15px;
+  height: 15px;
+  color: var(--warning);
+}
+.imp__checks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px 4px;
+}
+.imp__checks:empty {
+  display: none;
+}
+
+/* Review & results */
+.imp__summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+.imp__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.imp__stat svg {
+  width: 16px;
+  height: 16px;
+}
+.t-success {
+  color: var(--success);
+}
+.imp__preview {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.imp__preview .table td {
+  max-width: 260px;
+  font-size: var(--fs-sm);
+}
+.imp__preview tr.is-bad td {
+  background: var(--danger-soft);
+}
+.imp__rownum {
+  width: 44px;
+  color: var(--text-3);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.imp__check svg {
+  width: 14px;
+  height: 14px;
+}
+.imp__check,
+.imp__err {
+  font-size: var(--fs-xs);
+  white-space: normal;
+  min-width: 220px;
+}
+.imp__err {
+  color: var(--danger-text);
+}
+.imp__progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.imp__progress .meter {
+  flex: 1;
+}

@@ -23,9 +23,11 @@ import { orgState } from "../../../lib/org";
 import type { SfError } from "../../../lib/sf";
 import { errorOffset, formatSoql, isCountOnly, mainObject, toDelimited, toJson, flattenRecords } from "../../../lib/soql";
 import { fmtDuration, fmtNumber, fmtRelative, plural } from "../../../lib/format";
+import { Pencil } from "lucide-preact";
 import { Badge, Button, Callout, copyText, Empty, Keys, Menu, Modal, SearchInput, Seg, Spinner, Switch, modKey, toast } from "../../../ui";
 import { route, navigate } from "../../router";
 import { ResultGrid, gridTz, hasDatetimes, setGridTz, type GridView } from "./ResultGrid";
+import { GridEditBar, useGridEdit, type GridEditState } from "./gridEdit";
 import { SoqlEditor, markError, type SoqlEditorHandle } from "./SoqlEditor";
 import {
   activeTab,
@@ -142,6 +144,7 @@ export function QueryPage() {
 
   const running = run?.status === "running" || !!run?.loadingMore;
   const obj = mainObject(tab.soql);
+  const ge = useGridEdit(tab.id, run, run ? mainObject(run.soql) : null);
 
   // Only offer Cancel once a query has been running for a moment, so fast queries don't flash it.
   useEffect(() => {
@@ -289,7 +292,7 @@ export function QueryPage() {
           }}
         />
 
-        <Results run={run} filter={filter} setFilter={setFilter} obj={obj} onMore={loadMore} onCancel={cancel} gridView={gridView} onCopy={copyVisible} />
+        <Results run={run} filter={filter} setFilter={setFilter} obj={obj} onMore={loadMore} onCancel={cancel} gridView={gridView} onCopy={copyVisible} ge={ge} />
       </div>
 
       {saving && <SaveDialog tab={tab} onClose={() => setSaving(false)} />}
@@ -306,7 +309,9 @@ function Results({
   onCancel,
   gridView,
   onCopy,
+  ge,
 }: {
+  ge: GridEditState;
   run: ReturnType<() => (typeof runs.value)[string]> | undefined;
   filter: string;
   setFilter: (s: string) => void;
@@ -411,6 +416,21 @@ function Results({
             <Button size="sm" onClick={onCopy} data-tip={`Copy visible rows for Excel (${modKey}+Shift+C)`}>
               <FileSpreadsheet /> Copy
             </Button>
+            {ge.eligible && (
+              <Button
+                size="sm"
+                variant={ge.on ? "soft" : "default"}
+                aria-pressed={ge.on}
+                onClick={() => {
+                  if (ge.on && ge.changes && !confirm(`Discard ${ge.changes} unsaved cell changes?`)) return;
+                  if (ge.on) ge.discard();
+                  ge.setOn(!ge.on);
+                }}
+                data-tip={ge.on ? "Stop editing" : "Edit cells, then save in bulk"}
+              >
+                <Pencil /> {ge.on ? "Editing" : "Edit"}
+              </Button>
+            )}
             <ExportMenu run={run} gridView={gridView} />
           </>
         )}
@@ -425,7 +445,24 @@ function Results({
           The query ran successfully but matched no records.
         </Empty>
       ) : (
-        <ResultGrid records={run.records} filter={filter} viewRef={gridView} />
+        <>
+          {ge.on && (
+            <div class="gedit-hint">
+              {ge.describe ? (
+                <>
+                  <Pencil aria-hidden="true" /> Double-click a cell, or select it and press Enter, to edit. {plural(ge.fields.size, "column")} can be edited
+                  {ge.fields.size === 0 ? " — add updateable fields of this object to the SELECT" : ""}.
+                </>
+              ) : (
+                <>
+                  <Spinner small /> Loading field info…
+                </>
+              )}
+            </div>
+          )}
+          <ResultGrid records={run.records} filter={filter} viewRef={gridView} edit={ge.edit} />
+          {obj && <GridEditBar ge={ge} run={run} obj={mainObject(run.soql) ?? obj} />}
+        </>
       )}
     </div>
   );

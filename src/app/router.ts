@@ -1,6 +1,6 @@
 import { signal } from "@preact/signals";
 
-export type PageId = "inspect" | "query" | "limits";
+export type PageId = "inspect" | "query" | "limits" | "users" | "import";
 
 export interface Route {
   page: PageId;
@@ -12,7 +12,7 @@ function parse(hash: string): Route {
   const raw = hash.replace(/^#\/?/, "");
   const [path, qs = ""] = raw.split("?");
   const segs = path.split("/").filter(Boolean).map(decodeURIComponent);
-  const page = (["inspect", "query", "limits"].includes(segs[0]) ? segs[0] : "inspect") as PageId;
+  const page = (["inspect", "query", "limits", "users", "import"].includes(segs[0]) ? segs[0] : "inspect") as PageId;
   return { page, parts: segs.slice(1), params: new URLSearchParams(qs) };
 }
 
@@ -36,6 +36,9 @@ export const links = {
   id: (id: string) => `#/inspect/_/${id}`,
   query: (soql?: string, tooling?: boolean) => "#/query" + (soql ? `?q=${encodeURIComponent(soql)}${tooling ? "&tooling=1" : ""}` : ""),
   limits: () => "#/limits",
+  users: (q?: string) => "#/users" + (q ? `?q=${encodeURIComponent(q)}` : ""),
+  user: (id: string) => `#/users/${id}`,
+  import: (object?: string) => "#/import" + (object ? `?object=${encodeURIComponent(object)}` : ""),
 };
 
 /** Absolute URL to an app page for a given org (for opening in a new tab). */

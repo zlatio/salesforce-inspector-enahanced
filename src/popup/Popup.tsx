@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { ArrowRight, Box, Check, Cloud, Database, ExternalLink, Fingerprint, Gauge, KeyRound, PanelRight, Settings2, SlidersHorizontal, TerminalSquare, X } from "lucide-preact";
+import { ArrowRight, Box, Check, Cloud, Database, ExternalLink, Fingerprint, Gauge, KeyRound, PanelRight, Settings2, SlidersHorizontal, TerminalSquare, Upload, Users, X } from "lucide-preact";
 import { RecordPeek } from "./RecordPeek";
 import { resolveApiHost } from "../lib/auth";
 import { parsePageContext, parsePastedTarget, type PageContext } from "../lib/context";
@@ -363,6 +363,20 @@ function Ready({ st, ctx, pageTitle: titleInfo }: { st: OrgState; ctx: PageConte
             </span>
             <span class="ptool__title">Org limits</span>
             <span class="ptool__desc">Usage & licenses</span>
+          </button>
+          <button class="ptool" onClick={() => open(links.users())}>
+            <span class="ptool__icon">
+              <Users />
+            </span>
+            <span class="ptool__title">Users</span>
+            <span class="ptool__desc">Access, logins, debug logs</span>
+          </button>
+          <button class="ptool" onClick={() => open(links.import(ctxObject?.name))}>
+            <span class="ptool__icon">
+              <Upload />
+            </span>
+            <span class="ptool__title">Data import</span>
+            <span class="ptool__desc">Insert, update, delete</span>
           </button>
         </section>
       </div>

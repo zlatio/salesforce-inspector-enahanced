@@ -545,7 +545,7 @@ interface EditorProps {
   lookups?: LookupNames;
 }
 
-function Editor({ f, value, original, onCommit, onCancel, onTab, onLookupName, lookups }: EditorProps) {
+export function Editor({ f, value, original, onCommit, onCancel, onTab, onLookupName, lookups }: EditorProps) {
   const [text, setText] = useState(toInput(f, value));
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement>(null);

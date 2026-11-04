@@ -1,4 +1,4 @@
-import { Activity, Check, ChevronDown, Copy, Database, ExternalLink, Gauge, Monitor, Moon, Search, Settings2, Sun, TerminalSquare } from "lucide-preact";
+import { Activity, Check, ChevronDown, Copy, Database, ExternalLink, Gauge, Monitor, Moon, Search, Settings2, Sun, TerminalSquare, Upload, Users } from "lucide-preact";
 import { orgState, shortOrgName } from "../lib/org";
 import { apiUsage } from "../lib/sf";
 import { setTheme, themePref, resolvedTheme, type ThemePref } from "../lib/theme";
@@ -151,6 +151,8 @@ const NAV: Array<{ id: PageId; label: string; Icon: typeof Database; href: strin
   { id: "inspect", label: "Objects", Icon: Database, href: links.objects() },
   { id: "query", label: "Query", Icon: TerminalSquare, href: links.query() },
   { id: "limits", label: "Limits", Icon: Gauge, href: links.limits() },
+  { id: "users", label: "Users", Icon: Users, href: links.users() },
+  { id: "import", label: "Import", Icon: Upload, href: links.import() },
 ];
 
 export function Rail() {
@@ -158,7 +160,7 @@ export function Rail() {
   return (
     <nav class="rail" aria-label="Tools">
       {NAV.map(({ id, label, Icon, href }) => (
-        <a key={id} href={href} class={"rail__item" + (current === id ? " is-active" : "")} aria-current={current === id ? "page" : undefined} title={`${label} (g then ${({ inspect: "o", query: "q", limits: "l" } as const)[id]})`}>
+        <a key={id} href={href} class={"rail__item" + (current === id ? " is-active" : "")} aria-current={current === id ? "page" : undefined} title={`${label} (g then ${({ inspect: "o", query: "q", limits: "l", users: "u", import: "i" } as const)[id]})`}>
           <span class="rail__icon">
             <Icon />
           </span>
