@@ -19,10 +19,12 @@ interface EditorProps {
   onTab?: (dir: 1 | -1) => void;
   onLookupName?: (id: string, name: string, type: string) => void;
   lookups?: LookupNames;
+  /** Edit datetimes in UTC (the query grid's UTC view) rather than local time. */
+  utc?: boolean;
 }
 
-export function Editor({ f, value, original, onCommit, onCancel, onTab, onLookupName, lookups }: EditorProps) {
-  const [text, setText] = useState(toInput(f, value));
+export function Editor({ f, value, original, onCommit, onCancel, onTab, onLookupName, lookups, utc }: EditorProps) {
+  const [text, setText] = useState(toInput(f, value, { utc }));
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement>(null);
   useEffect(() => {
@@ -38,7 +40,7 @@ export function Editor({ f, value, original, onCommit, onCancel, onTab, onLookup
   const commit = (raw = text, then?: () => void) => {
     if (done.current) return;
     try {
-      const v = raw === initial.current ? value : fromInput(f, raw);
+      const v = raw === initial.current ? value : fromInput(f, raw, { utc });
       done.current = true;
       onCommit(v);
       then?.();
@@ -180,7 +182,9 @@ export function Editor({ f, value, original, onCommit, onCancel, onTab, onLookup
         ? "Toggle values, then Done · Esc to cancel"
         : f.type === "reference"
           ? "Type a name or paste an ID · Enter to apply · Esc to cancel"
-          : "Enter to apply · Esc to cancel";
+          : f.type === "datetime" && utc
+            ? "Time in UTC · Enter to apply · Esc to cancel"
+            : "Enter to apply · Esc to cancel";
 
   return (
     <div class="feditor" onClick={(e) => e.stopPropagation()}>

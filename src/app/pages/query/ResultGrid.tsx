@@ -299,6 +299,7 @@ export function ResultGrid({ records, filter, viewRef, edit }: { records: SfReco
                               f={f!}
                               value={v}
                               original={r[c]}
+                              utc={gridTz.value === "utc"}
                               onCommit={(nv) => {
                                 edit!.onStage(id!, c, sameValue(nv, r[c]) ? undefined : nv);
                                 setEditing(null);

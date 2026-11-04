@@ -7,14 +7,20 @@ export function isEditable(f: DescribeField) {
   return f.updateable && !f.calculated && !f.autoNumber && f.type !== "address" && f.type !== "location" && f.type !== "base64";
 }
 
+/** Options for datetime fields: edit in UTC instead of the browser's local time. */
+export interface ZoneOpts {
+  utc?: boolean;
+}
+
 /** Convert an API value into the string an <input> expects. */
-export function toInput(f: DescribeField, v: unknown): string {
+export function toInput(f: DescribeField, v: unknown, { utc }: ZoneOpts = {}): string {
   if (f.type === "boolean") return v === true || v === "true" ? "true" : "false";
   if (v == null) return "";
   switch (f.type) {
     case "datetime": {
       const d = new Date(String(v));
       if (isNaN(+d)) return String(v);
+      if (utc) return d.toISOString().slice(0, 19);
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
     case "time":
@@ -25,7 +31,7 @@ export function toInput(f: DescribeField, v: unknown): string {
 }
 
 /** Convert input text back into the value the REST API wants (or throw a readable error). */
-export function fromInput(f: DescribeField, s: string): unknown {
+export function fromInput(f: DescribeField, s: string, { utc }: ZoneOpts = {}): unknown {
   if (f.type === "boolean") {
     const t = s.trim().toLowerCase();
     if (["true", "yes", "1"].includes(t)) return true;
@@ -48,7 +54,8 @@ export function fromInput(f: DescribeField, s: string): unknown {
       return n;
     }
     case "datetime": {
-      const d = new Date(s);
+      // datetime-local text has no zone: it's local time unless the caller edits in UTC.
+      const d = new Date(utc && !/(Z|[+-]\d\d:?\d\d)$/.test(s) ? s + "Z" : s);
       if (isNaN(+d)) throw new Error("Enter a valid date and time");
       return d.toISOString();
     }
