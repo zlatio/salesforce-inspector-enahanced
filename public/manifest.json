@@ -1,0 +1,114 @@
+{
+  "manifest_version": 3,
+  "name": "Salesforce Inspector Enhanced",
+  "short_name": "SF Inspector+",
+  "version": "0.1.0",
+  "description": "Inspect and edit records, run and manage SOQL, and monitor org limits \u2014 with a modern light and dark UI.",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Salesforce Inspector Enhanced",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "permissions": [
+    "cookies",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.salesforce.com/*",
+    "https://*.salesforce-setup.com/*",
+    "https://*.force.com/*",
+    "https://*.cloudforce.com/*",
+    "https://*.visualforce.com/*",
+    "https://*.sfcrmapps.cn/*",
+    "https://*.sfcrmproducts.cn/*",
+    "https://*.salesforce.mil/*",
+    "https://*.force.mil/*",
+    "https://*.cloudforce.mil/*",
+    "https://*.visualforce.mil/*",
+    "https://*.crmforce.mil/*",
+    "https://*.force.com.mcas.ms/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.salesforce.com/*",
+        "https://*.salesforce-setup.com/*",
+        "https://*.force.com/*",
+        "https://*.cloudforce.com/*",
+        "https://*.visualforce.com/*",
+        "https://*.sfcrmapps.cn/*",
+        "https://*.sfcrmproducts.cn/*",
+        "https://*.salesforce.mil/*",
+        "https://*.force.mil/*",
+        "https://*.cloudforce.mil/*",
+        "https://*.visualforce.mil/*",
+        "https://*.crmforce.mil/*",
+        "https://*.force.com.mcas.ms/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "popup.html",
+        "assets/*",
+        "icons/*",
+        "theme-init.js"
+      ],
+      "matches": [
+        "https://*.salesforce.com/*",
+        "https://*.salesforce-setup.com/*",
+        "https://*.force.com/*",
+        "https://*.cloudforce.com/*",
+        "https://*.visualforce.com/*",
+        "https://*.sfcrmapps.cn/*",
+        "https://*.sfcrmproducts.cn/*",
+        "https://*.salesforce.mil/*",
+        "https://*.force.mil/*",
+        "https://*.cloudforce.mil/*",
+        "https://*.visualforce.mil/*",
+        "https://*.crmforce.mil/*",
+        "https://*.force.com.mcas.ms/*"
+      ]
+    }
+  ],
+  "incognito": "split",
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+K"
+      },
+      "description": "Open the Inspector popup"
+    },
+    "inspect-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+I"
+      },
+      "description": "Inspect the record or object on the current page"
+    },
+    "open-query": {
+      "description": "Open the SOQL query editor for the current org"
+    },
+    "open-limits": {
+      "description": "Open org limits for the current org"
+    }
+  }
+}
