@@ -20,6 +20,7 @@ export default defineConfig({
       input: {
         app: r("src/app.html"),
         popup: r("src/popup.html"),
+        sidepanel: r("src/sidepanel.html"),
         background: r("src/background/index.ts"),
       },
       output: {

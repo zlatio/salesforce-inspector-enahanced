@@ -19,8 +19,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return false;
 });
 
+// "Toolbar icon opens": the popup (default) or Chrome's side panel.
+async function applyActionMode() {
+  const { "sie.actionMode": mode } = await chrome.storage.local.get("sie.actionMode");
+  const panel = mode === "panel";
+  await chrome.action.setPopup({ popup: panel ? "" : "popup.html" });
+  await chrome.sidePanel?.setPanelBehavior({ openPanelOnActionClick: panel }).catch(() => {});
+}
+applyActionMode();
+chrome.runtime.onInstalled.addListener(applyActionMode);
+chrome.runtime.onStartup?.addListener(applyActionMode);
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && "sie.actionMode" in changes) applyActionMode();
+});
+
 // Keyboard shortcuts (configurable at chrome://extensions/shortcuts).
 chrome.commands?.onCommand.addListener(async (command, tab) => {
+  if (command === "toggle-side-panel") {
+    // Must be called synchronously from the user gesture, before any await.
+    if (tab?.windowId != null) chrome.sidePanel?.open({ windowId: tab.windowId }).catch(() => {});
+    return;
+  }
   if (!tab?.url) return;
   const host = await resolveApiHost(tab.url);
   if (!host) return;

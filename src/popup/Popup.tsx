@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { ArrowRight, Box, Cloud, Database, ExternalLink, Fingerprint, Gauge, KeyRound, Settings2, TerminalSquare, X } from "lucide-preact";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { ArrowRight, Box, Check, Cloud, Database, ExternalLink, Fingerprint, Gauge, KeyRound, PanelRight, Settings2, SlidersHorizontal, TerminalSquare, X } from "lucide-preact";
+import { RecordPeek } from "./RecordPeek";
 import { resolveApiHost } from "../lib/auth";
 import { parsePageContext, parsePastedTarget, type PageContext } from "../lib/context";
 import { connectOrg, loadRecentOrgs, shortOrgName, type OrgState, type RecentOrg } from "../lib/org";
@@ -7,7 +8,7 @@ import { apiUsage, SfError } from "../lib/sf";
 import type { GlobalSObject } from "../lib/types";
 import { fmtPercent } from "../lib/format";
 import { load, save } from "../lib/storage";
-import { CopyButton, EnvBadge, Kbd, Spinner, Switch } from "../ui";
+import { Button, CopyButton, EnvBadge, Kbd, Menu, Spinner, Toasts, toast } from "../ui";
 import { ThemeMenu } from "../app/Shell";
 import { rankObjects } from "../app/Palette";
 import { appUrl, links } from "../app/router";
@@ -17,8 +18,11 @@ import { buildDefaultQuery } from "../lib/queries";
 
 const params = new URLSearchParams(location.search);
 const embedded = params.get("embedded") === "1";
+/** The same UI runs as the toolbar popup, inside the in-page panel, or as Chrome's side panel. */
+const isPanel = location.pathname.endsWith("sidepanel.html");
 
 function closePopup() {
+  if (isPanel) return; // the side panel stays open
   if (embedded) window.parent.postMessage({ type: "sie:close" }, "*");
   else window.close();
 }
@@ -30,6 +34,29 @@ async function openTab(url: string, forceNew = false) {
   }
   await openAppTab(url, { forceNew });
   closePopup();
+}
+
+/** Open Chrome's side panel for this window (must run from a user gesture, e.g. a click in the popup). */
+async function openSidePanel() {
+  try {
+    const win = await chrome.windows.getCurrent();
+    await chrome.sidePanel.open({ windowId: win.id! });
+    window.close();
+  } catch (e) {
+    toast("error", "Couldn't open the side panel", (e as Error).message);
+  }
+}
+
+// Connecting costs a few API calls, so reuse the connection while the side panel follows tabs around.
+const orgCache = new Map<string, Promise<OrgState>>();
+function connectCached(host: string) {
+  let p = orgCache.get(host);
+  if (!p) {
+    p = connectOrg(host);
+    p.catch(() => orgCache.delete(host));
+    orgCache.set(host, p);
+  }
+  return p;
 }
 
 // When embedded in the in-page panel, tell the page how tall the content is so the panel fits it.
@@ -53,32 +80,55 @@ function recordNameFromTitle(title: string | null | undefined): { name: string; 
 
 export function Popup() {
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
+  const lastUrl = useRef<string | null>(null);
+
+  const detect = useCallback(async () => {
+    let pageUrl = params.get("url") ?? "";
+    let pageTitle = params.get("title");
+    if (!pageUrl && chrome.tabs?.query) {
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      pageUrl = tab?.url ?? "";
+      pageTitle = tab?.title ?? null;
+    }
+    // Lightning updates the tab title after the URL, so a title change alone is worth a refresh too.
+    const key = pageUrl + "|" + (pageTitle ?? "");
+    if (key === lastUrl.current && isPanel) return;
+    lastUrl.current = key;
+    const host = pageUrl ? await resolveApiHost(pageUrl) : null;
+    if (!host) return setPhase({ kind: "nosf", recent: await loadRecentOrgs() });
+    try {
+      const st = await connectCached(host);
+      setPhase({ kind: "ready", st, ctx: parsePageContext(pageUrl), title: recordNameFromTitle(pageTitle) });
+    } catch (e) {
+      setPhase({ kind: "error", host, error: e as Error });
+    }
+  }, []);
 
   useEffect(() => {
-    (async () => {
-      let pageUrl = params.get("url") ?? "";
-      let pageTitle = params.get("title");
-      if (!pageUrl && chrome.tabs?.query) {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        pageUrl = tab?.url ?? "";
-        pageTitle = tab?.title ?? null;
-      }
-      const host = pageUrl ? await resolveApiHost(pageUrl) : null;
-      if (!host) return setPhase({ kind: "nosf", recent: await loadRecentOrgs() });
-      try {
-        const st = await connectOrg(host);
-        setPhase({ kind: "ready", st, ctx: parsePageContext(pageUrl), title: recordNameFromTitle(pageTitle) });
-      } catch (e) {
-        setPhase({ kind: "error", host, error: e as Error });
-      }
-    })();
+    detect();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && closePopup();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    if (!isPanel) return () => window.removeEventListener("keydown", onKey);
+    // Side panel: follow the active tab — switching tabs, navigating within Salesforce, changing windows.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const soon = () => {
+      clearTimeout(timer);
+      timer = setTimeout(detect, 250);
+    };
+    const onUpdated = (_id: number, info: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) => tab.active && (info.url || info.status === "complete" || info.title) && soon();
+    chrome.tabs.onActivated.addListener(soon);
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    chrome.windows.onFocusChanged.addListener(soon);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      chrome.tabs.onActivated.removeListener(soon);
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      chrome.windows.onFocusChanged.removeListener(soon);
+    };
   }, []);
 
   return (
-    <div class={"popup" + (embedded ? " popup--embedded" : "")}>
+    <div class={"popup" + (embedded ? " popup--embedded" : "") + (isPanel ? " popup--panel" : "")}>
       {phase.kind === "loading" && (
         <>
           <PopupHeader />
@@ -89,7 +139,8 @@ export function Popup() {
       )}
       {phase.kind === "nosf" && <NoSalesforce recent={phase.recent} />}
       {phase.kind === "error" && <ErrorState host={phase.host} error={phase.error} />}
-      {phase.kind === "ready" && <Ready st={phase.st} ctx={phase.ctx} pageTitle={phase.title} />}
+      {phase.kind === "ready" && <Ready key={phase.st.sf.host} st={phase.st} ctx={phase.ctx} pageTitle={phase.title} />}
+      <Toasts />
     </div>
   );
 }
@@ -114,6 +165,11 @@ function PopupHeader({ st }: { st?: OrgState }) {
         </div>
       )}
       {st && <EnvBadge env={st.env} />}
+      {!embedded && !isPanel && chrome.sidePanel && (
+        <Button variant="ghost" icon size="sm" aria-label="Open in side panel" data-tip="Open in side panel" data-tip-pos="left" onClick={openSidePanel}>
+          <PanelRight />
+        </Button>
+      )}
       <ThemeMenu />
       {embedded && (
         <button class="copy" aria-label="Close" onClick={closePopup} style={{ width: 28, height: 28 }}>
@@ -127,7 +183,11 @@ function PopupHeader({ st }: { st?: OrgState }) {
 function Ready({ st, ctx, pageTitle: titleInfo }: { st: OrgState; ctx: PageContext; pageTitle: { name: string; object: string } | null }) {
   const sf = st.sf;
   const [objects, setObjects] = useState<GlobalSObject[]>([]);
-  const [ctxObject, setCtxObject] = useState<GlobalSObject | null>(null);
+  const ctxObject = useMemo<GlobalSObject | null>(() => {
+    if (ctx.objectName) return objects.find((o) => o.name.toLowerCase() === ctx.objectName!.toLowerCase()) ?? null;
+    if (ctx.recordId) return objects.find((o) => o.keyPrefix === ctx.recordId!.slice(0, 3)) ?? null;
+    return null;
+  }, [objects, ctx.objectName, ctx.recordId]);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -146,13 +206,8 @@ function Ready({ st, ctx, pageTitle: titleInfo }: { st: OrgState; ctx: PageConte
   const queryObject = async (objName: string, recordId?: string) => open(links.query(await buildDefaultQuery(sf, objName, recordId ? { where: `Id = '${recordId}'` } : {})));
 
   useEffect(() => {
-    inputRef.current?.focus();
-    sf.describeGlobal().then((g) => {
-      const list = g.sobjects.filter((o) => !o.deprecatedAndHidden);
-      setObjects(list);
-      if (ctx.objectName) setCtxObject(list.find((o) => o.name.toLowerCase() === ctx.objectName!.toLowerCase()) ?? null);
-      else if (ctx.recordId) setCtxObject(list.find((o) => o.keyPrefix === ctx.recordId!.slice(0, 3)) ?? null);
-    });
+    if (!isPanel) inputRef.current?.focus();
+    sf.describeGlobal().then((g) => setObjects(g.sobjects.filter((o) => !o.deprecatedAndHidden)));
   }, []);
 
   const s = q.trim();
@@ -222,6 +277,15 @@ function Ready({ st, ctx, pageTitle: titleInfo }: { st: OrgState; ctx: PageConte
               )}
             </div>
           </section>
+        )}
+
+        {isPanel && ctx.recordId && (
+          <RecordPeek
+            sf={sf}
+            objectName={ctxObject?.name}
+            recordId={ctx.recordId}
+            onOpenField={(obj, field) => open(`${links.record(obj, ctx.recordId!)}${field ? `?field=${encodeURIComponent(field)}` : ""}`)}
+          />
         )}
 
         <section class="psearch">
@@ -313,28 +377,57 @@ function Ready({ st, ctx, pageTitle: titleInfo }: { st: OrgState; ctx: PageConte
         <a class="pfoot__link" href={`https://${sf.lightningHost}/lightning/setup/SetupOneHome/home`} target="_blank" rel="noreferrer">
           <Settings2 /> Setup
         </a>
-        <LauncherToggle />
+        <SettingsMenu />
       </footer>
     </>
   );
 }
 
-function LauncherToggle() {
-  const [on, setOn] = useState(false);
+/** Small settings menu: what the toolbar icon opens, and whether the in-page button is shown. */
+function SettingsMenu() {
+  const [launcher, setLauncher] = useState(false);
+  const [actionMode, setActionMode] = useState<"popup" | "panel">("popup");
   useEffect(() => {
-    load("sie.launcher", false).then(setOn);
+    load("sie.launcher", false).then(setLauncher);
+    load<"popup" | "panel">("sie.actionMode", "popup").then(setActionMode);
   }, []);
-  return (
-    <Switch
-      checked={on}
-      onChange={(v) => {
-        setOn(v);
-        save("sie.launcher", v);
+  const item = (checked: boolean, label: string, onClick: () => void, close: () => void) => (
+    <button
+      role="menuitemradio"
+      aria-checked={checked}
+      class="menu__item"
+      onClick={() => {
+        onClick();
+        close();
       }}
-      title="Also show a small Inspector tab on the right edge of Salesforce pages"
     >
-      In-page button
-    </Switch>
+      <span class="menu__check">{checked && <Check />}</span>
+      {label}
+    </button>
+  );
+  return (
+    <Menu
+      trigger={(open, toggle) => (
+        <Button variant="ghost" size="sm" onClick={toggle} aria-haspopup="menu" aria-expanded={open}>
+          <SlidersHorizontal /> Settings
+        </Button>
+      )}
+    >
+      {(close) => (
+        <>
+          <div class="menu__label" role="none">
+            Toolbar icon opens
+          </div>
+          {item(actionMode === "popup", "This popup", () => (setActionMode("popup"), save("sie.actionMode", "popup")), close)}
+          {chrome.sidePanel && item(actionMode === "panel", "The side panel", () => (setActionMode("panel"), save("sie.actionMode", "panel")), close)}
+          <div class="menu__sep" />
+          <div class="menu__label" role="none">
+            On Salesforce pages
+          </div>
+          {item(launcher, "Show the in-page Inspector button", () => (setLauncher(!launcher), save("sie.launcher", !launcher)), close)}
+        </>
+      )}
+    </Menu>
   );
 }
 

@@ -52,6 +52,7 @@ More screenshots are in [`docs/screenshots`](docs/screenshots). Short walkthroug
 
 ### Everywhere
 - **Toolbar popup** (pin the extension, or press `Alt+Shift+K`): this is the main entry point. It detects the record or object on the current Salesforce page and reuses the org's Inspector tab instead of opening new ones.
+- **Side panel** (popup header button, `Alt+Shift+S`, or set the toolbar icon to open it): it stays open beside Salesforce, follows the active tab, and lists the current record's fields live. Search them, click an API name to copy it, or open a field in the inspector.
 - **In-page launcher** (opt-in): a small tab on the right edge of Salesforce pages that opens the same popup as a floating panel. Turn it on with "In-page button" in the popup footer.
 - **Command palette** (`Ctrl/⌘+K`):
   - objects, recent records, saved queries, Setup pages and theme
@@ -64,6 +65,7 @@ More screenshots are in [`docs/screenshots`](docs/screenshots). Short walkthroug
   - `Ctrl/⌘+S` reviews and saves
   - `Alt+Shift+K` opens the popup
   - `Alt+Shift+I` inspects the current page
+  - `Alt+Shift+S` opens the side panel
   - The browser-level shortcuts can be changed at `chrome://extensions/shortcuts`.
 - Light, dark or system theme. Text meets WCAG AA contrast in both themes, and every control is reachable from the keyboard.
 
