@@ -75,8 +75,9 @@ export function QueryPage() {
     const q = route.value.params.get("q");
     if (!q) return;
     const tooling = route.value.params.get("tooling") === "1";
-    // The same query is already open: switch to it rather than piling up duplicate tabs.
-    const same = tabs.value.find((t) => t.soql.trim() === q.trim() && !!t.tooling === tooling);
+    // Links always mean a plain query (never "Include deleted"). If the same query is already
+    // open that way, switch to it rather than piling up duplicate tabs.
+    const same = tabs.value.find((t) => t.soql.trim() === q.trim() && !!t.tooling === tooling && !t.all);
     if (same) {
       activeTabId.value = same.id;
       navigate("#/query", true);
@@ -84,10 +85,10 @@ export function QueryPage() {
       if (!gridChangeCount(same.id)) setTimeout(() => execute(same), 0);
       return;
     }
-    const empty =tabs.value.find((t) => !t.soql.trim() || t.soql === NEW_TAB_SOQL);
-    const t = empty ? (setTabSoql(empty.id, q, { tooling }), (activeTabId.value = empty.id), empty) : newTab(q, tooling);
+    const empty = tabs.value.find((t) => !t.soql.trim() || t.soql === NEW_TAB_SOQL);
+    const t = empty ? (setTabSoql(empty.id, q, { tooling, all: false }), (activeTabId.value = empty.id), empty) : newTab(q, tooling);
     navigate("#/query", true);
-    setTimeout(() => execute({ ...t, soql: q, tooling }), 0);
+    setTimeout(() => execute({ ...t, soql: q, tooling, all: false }), 0);
   }, [route.value.params.get("q")]);
 
   useEffect(() => setFilter(""), [tab.id]);
