@@ -213,13 +213,15 @@ export class Sf {
   }
 
   /** Resolve the sObject type for a record id from its 3-character key prefix. */
-  async objectForId(id: string): Promise<GlobalSObject | null> {
+  /** The object a record id belongs to, from its key prefix; tooling is set when only the Tooling API knows it. */
+  async objectForId(id: string): Promise<(GlobalSObject & { tooling: boolean }) | null> {
     const prefix = id.slice(0, 3);
     const data = await this.describeGlobal();
     const hit = data.sobjects.find((s) => s.keyPrefix === prefix);
-    if (hit) return hit;
+    if (hit) return { ...hit, tooling: false };
     const tooling = await this.describeGlobal(true).catch(() => null);
-    return tooling?.sobjects.find((s) => s.keyPrefix === prefix) ?? null;
+    const toolingHit = tooling?.sobjects.find((s) => s.keyPrefix === prefix);
+    return toolingHit ? { ...toolingHit, tooling: true } : null;
   }
 
   // ---- Records -----------------------------------------------------------

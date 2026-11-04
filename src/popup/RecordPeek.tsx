@@ -22,8 +22,8 @@ function show(f: DescribeField, v: unknown): { text: string; kind?: "null" | "bo
  * "Fields on this record": a live, searchable list for the record open in the current tab. Clicking an
  * API name copies it; the arrow opens that field in the full inspector.
  */
-export function RecordPeek({ sf, objectName, recordId, onOpenField }: { sf: Sf; objectName?: string; recordId: string; onOpenField: (obj: string, field?: string) => void }) {
-  const [data, setData] = useState<{ d: DescribeSObjectResult; rec: SfRecord } | null>(null);
+export function RecordPeek({ sf, objectName, recordId, onOpenField }: { sf: Sf; objectName?: string; recordId: string; onOpenField: (obj: string, field: string, tooling: boolean) => void }) {
+  const [data, setData] = useState<{ d: DescribeSObjectResult; rec: SfRecord; tooling: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [showEmpty, setShowEmpty] = useState(false);
@@ -35,10 +35,10 @@ export function RecordPeek({ sf, objectName, recordId, onOpenField }: { sf: Sf; 
     setError(null);
     (async () => {
       try {
-        const obj = objectName ?? (await sf.objectForId(recordId))?.name;
-        if (!obj) throw new Error("Unknown object for this record id.");
-        const [d, rec] = await Promise.all([sf.describe(obj), sf.getRecord(obj, recordId)]);
-        if (!cancelled) setData({ d, rec });
+        const o = objectName ? { name: objectName, tooling: false } : await sf.objectForId(recordId);
+        if (!o) throw new Error("Unknown object for this record id.");
+        const [d, rec] = await Promise.all([sf.describe(o.name, o.tooling), sf.getRecord(o.name, recordId, o.tooling)]);
+        if (!cancelled) setData({ d, rec, tooling: o.tooling });
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
       }
@@ -123,7 +123,7 @@ export function RecordPeek({ sf, objectName, recordId, onOpenField }: { sf: Sf; 
                 <div class={"peek__value" + (v.kind ? ` peek__value--${v.kind}` : "")} title={v.text}>
                   {v.text}
                 </div>
-                <button class="copy peek__open" aria-label={`Open ${f.label} in the inspector`} data-tip="Open in inspector" data-tip-pos="left" onClick={() => onOpenField(data.d.name, f.name)}>
+                <button class="copy peek__open" aria-label={`Open ${f.label} in the inspector`} data-tip="Open in inspector" data-tip-pos="left" onClick={() => onOpenField(data.d.name, f.name, data.tooling)}>
                   <ArrowUpRight />
                 </button>
               </div>

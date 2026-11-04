@@ -317,7 +317,7 @@ function Ready({ st, ctx, pageTitle: titleInfo }: { st: OrgState; ctx: PageConte
             sf={sf}
             objectName={ctxObject?.name}
             recordId={ctx.recordId}
-            onOpenField={(obj, field) => open(`${links.record(obj, ctx.recordId!)}${field ? `?field=${encodeURIComponent(field)}` : ""}`)}
+            onOpenField={(obj, field, tooling) => open(`${links.record(obj, ctx.recordId!)}?field=${encodeURIComponent(field)}${tooling ? "&tooling=1" : ""}`)}
           />
         )}
 

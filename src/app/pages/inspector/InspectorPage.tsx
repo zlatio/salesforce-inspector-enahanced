@@ -27,7 +27,7 @@ function ResolveId({ id, tooling }: { id: string; tooling: boolean }) {
     sf.objectForId(id).then(
       (o) => {
         if (!o) return setError(`No object in this org uses the key prefix “${id.slice(0, 3)}”.`);
-        navigate(links.record(o.name, id) + (tooling ? "?tooling=1" : ""), true);
+        navigate(links.record(o.name, id) + (tooling || o.tooling ? "?tooling=1" : ""), true);
       },
       (e) => setError(e.message),
     );

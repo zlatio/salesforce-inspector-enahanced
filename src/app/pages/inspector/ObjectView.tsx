@@ -526,7 +526,7 @@ async function resolveLookups(describe: DescribeSObjectResult, record: SfRecord)
   const byObject = new Map<string, string[]>();
   for (const id of ids) {
     const o = await sf.objectForId(id);
-    if (!o || !o.queryable) continue;
+    if (!o || o.tooling || !o.queryable) continue;
     byObject.set(o.name, [...(byObject.get(o.name) ?? []), id]);
   }
   const out: LookupNames = {};
