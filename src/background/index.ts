@@ -1,20 +1,12 @@
-import { getSession, resolveApiHost } from "../lib/auth";
+import { resolveApiHost } from "../lib/auth";
 import { parsePageContext } from "../lib/context";
 import { openAppTab } from "../lib/openApp";
 
-// Content scripts cannot read cookies, so the background answers their session questions.
+// Content scripts cannot read cookies, so the background resolves the API host for them.
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === "sie:resolveHost") {
     resolveApiHost(msg.url ?? sender.tab?.url ?? "").then(sendResponse, () => sendResponse(null));
     return true;
-  }
-  if (msg?.type === "sie:hasSession") {
-    getSession(msg.host).then((s) => sendResponse(!!s), () => sendResponse(false));
-    return true;
-  }
-  if (msg?.type === "sie:openApp") {
-    chrome.tabs.create({ url: chrome.runtime.getURL(msg.path), index: sender.tab ? sender.tab.index + 1 : undefined });
-    return false;
   }
   return false;
 });
