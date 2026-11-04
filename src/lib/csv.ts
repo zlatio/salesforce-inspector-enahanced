@@ -49,9 +49,9 @@ export function parseDelimited(text: string, delimiter: Delimiter = detectDelimi
     row.push(field);
     rows.push(row);
   }
-  // Drop trailing blank lines (common when pasting from a spreadsheet).
-  while (rows.length && rows[rows.length - 1].every((c) => c.trim() === "")) rows.pop();
-  return rows;
+  // Drop blank lines anywhere (spreadsheet pastes often have empty or all-tab rows); they'd
+  // otherwise import as empty records.
+  return rows.filter((r) => r.some((c) => c.trim() !== ""));
 }
 
 const esc = (s: string, sep: string) => (/["\n\r]/.test(s) || s.includes(sep) ? `"${s.replace(/"/g, '""')}"` : s);
