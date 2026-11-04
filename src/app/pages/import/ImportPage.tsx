@@ -157,153 +157,156 @@ export function ImportPage() {
         </div>
 
         <div class="imp lpad">
-          {/* 1. Data */}
-          <section class="card imp__step">
-            <StepHead n={1} title="Data" done={dataRows.length > 0}>
-              {dataRows.length > 0 && (
-                <span class="muted">
-                  {DELIMITER_LABEL[delimiter]} · {plural(dataRows.length, "row")} · {plural(width, "column")}
-                </span>
-              )}
-            </StepHead>
-            <div class="card__body stack" style={{ gap: 10 }}>
-              {!text ? (
-                <DropZone onText={setText} onFile={onFile} />
-              ) : (
-                <>
-                  <textarea class="textarea imp__paste mono" value={text} onInput={(e) => setText((e.target as HTMLTextAreaElement).value)} spellcheck={false} aria-label="Import data" rows={6} />
-                  <div class="row">
-                    <span class="muted" style={{ fontSize: "var(--fs-sm)" }}>
-                      Separator
-                    </span>
-                    <Seg
-                      label="Separator"
-                      value={delim}
-                      onChange={setDelim}
-                      options={[
-                        { value: "auto", label: "Auto" },
-                        { value: "\t", label: "Tab" },
-                        { value: ",", label: "Comma" },
-                        { value: ";", label: "Semicolon" },
-                      ]}
-                    />
-                    <span class="muted" style={{ fontSize: "var(--fs-sm)", marginLeft: 8 }}>
-                      Numbers
-                    </span>
-                    <Seg
-                      label="Number format"
-                      value={numbers}
-                      onChange={setNumbers}
-                      options={[
-                        { value: "us", label: "1,234.56" },
-                        { value: "eu", label: "1.234,56" },
-                      ]}
-                    />
-                    <span class="muted" style={{ marginLeft: "auto", fontSize: "var(--fs-sm)" }}>
-                      The first row must contain column headers.
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
-
-          {/* 2. Target */}
-          <section class={"card imp__step" + (dataRows.length ? "" : " is-dim")}>
-            <StepHead n={2} title="Object & operation" done={!!describe} />
-            <div class="card__body imp__target">
-              <label class="stack imp__field">
-                <span class="imp__label">Object</span>
-                <ObjectPicker objects={objects} value={objectName} onChange={setObjectName} />
-              </label>
-              <div class="stack imp__field">
-                <span class="imp__label">Operation</span>
-                <Seg label="Operation" value={op} onChange={setOp} options={OPS.map((o) => ({ value: o.value, label: o.label, title: o.hint }))} />
-              </div>
-              {op === "upsert" && describe && (
-                <label class="stack imp__field">
-                  <span class="imp__label">Match records on</span>
-                  <select class="select" value={keyField ?? ""} onChange={(e) => setKeyField((e.target as HTMLSelectElement).value)}>
-                    {externalIdFields(describe).map((f) => (
-                      <option key={f.name} value={f.name}>
-                        {f.label} ({f.name})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-            </div>
-          </section>
-
-          {/* 3. Mapping */}
-          <section class={"card imp__step" + (describe && headers.length ? "" : " is-dim")}>
-            <StepHead n={3} title="Map columns" done={!!describe && mappedCount > 0 && !missing.length && !needsId && !needsKey}>
-              {describe && headers.length > 0 && (
-                <span class="muted">
-                  {mappedCount} of {headers.length} columns mapped
-                </span>
-              )}
-            </StepHead>
-            {describe && headers.length > 0 ? (
-              <div class="imp__map">
-                <div class="imp__maprow imp__maprow--head">
-                  <span>Column</span>
-                  <span>Sample</span>
-                  <span />
-                  <span>Field</span>
-                </div>
-                {headers.map((h, col) => {
-                  const m = mapping[col] ?? null;
-                  const ignored = m && !writableNames.has(m);
-                  return (
-                    <div class={"imp__maprow" + (effectiveMapping[col] ? " is-mapped" : "")} key={col}>
-                      <span class="truncate imp__col" title={h}>
-                        {h || <span class="muted">(column {col + 1})</span>}
+          {/* Steps 1–3 are locked while an import runs: results are matched back to these rows. */}
+          <fieldset class="imp__lock" disabled={running}>
+            {/* 1. Data */}
+            <section class="card imp__step">
+              <StepHead n={1} title="Data" done={dataRows.length > 0}>
+                {dataRows.length > 0 && (
+                  <span class="muted">
+                    {DELIMITER_LABEL[delimiter]} · {plural(dataRows.length, "row")} · {plural(width, "column")}
+                  </span>
+                )}
+              </StepHead>
+              <div class="card__body stack" style={{ gap: 10 }}>
+                {!text ? (
+                  <DropZone onText={setText} onFile={onFile} />
+                ) : (
+                  <>
+                    <textarea class="textarea imp__paste mono" value={text} onInput={(e) => setText((e.target as HTMLTextAreaElement).value)} spellcheck={false} aria-label="Import data" rows={6} />
+                    <div class="row">
+                      <span class="muted" style={{ fontSize: "var(--fs-sm)" }}>
+                        Separator
                       </span>
-                      <span class="truncate muted mono imp__sample" title={dataRows.slice(0, 3).map((r) => r[col]).join(" · ")}>
-                        {dataRows.slice(0, 3).map((r) => r[col] ?? "").filter(Boolean).join(" · ") || "—"}
+                      <Seg
+                        label="Separator"
+                        value={delim}
+                        onChange={setDelim}
+                        options={[
+                          { value: "auto", label: "Auto" },
+                          { value: "\t", label: "Tab" },
+                          { value: ",", label: "Comma" },
+                          { value: ";", label: "Semicolon" },
+                        ]}
+                      />
+                      <span class="muted" style={{ fontSize: "var(--fs-sm)", marginLeft: 8 }}>
+                        Numbers
                       </span>
-                      <ArrowRight class="imp__arrow" aria-hidden="true" />
-                      <span class="row" style={{ gap: 6 }}>
-                        <select
-                          class="select select--sm"
-                          aria-label={`Field for column ${h}`}
-                          value={m ?? ""}
-                          onChange={(e) => {
-                            const v = (e.target as HTMLSelectElement).value || null;
-                            setMapping((prev) => prev.map((x, i) => (i === col ? v : x === v && v ? null : x)));
-                          }}
-                        >
-                          <option value="">— Skip this column —</option>
-                          {writable.map((f) => (
-                            <option key={f.name} value={f.name}>
-                              {f.label} ({f.name})
-                            </option>
-                          ))}
-                        </select>
-                        {ignored && (
-                          <span class="imp__warn" title={`${m} can't be written by ${op}`}>
-                            <AlertTriangle />
-                          </span>
-                        )}
+                      <Seg
+                        label="Number format"
+                        value={numbers}
+                        onChange={setNumbers}
+                        options={[
+                          { value: "us", label: "1,234.56" },
+                          { value: "eu", label: "1.234,56" },
+                        ]}
+                      />
+                      <span class="muted" style={{ marginLeft: "auto", fontSize: "var(--fs-sm)" }}>
+                        The first row must contain column headers.
                       </span>
                     </div>
-                  );
-                })}
-                <div class="imp__checks">
-                  {needsId && <Callout tone="danger">Map a column to the record Id — {op} needs it to find each record.</Callout>}
-                  {needsKey && <Callout tone="danger">Map a column to {keyField} — upsert matches records on it.</Callout>}
-                  {missing.length > 0 && (
-                    <Callout tone="warning" title="Required fields aren't mapped">
-                      {missing.map((f) => f.label).join(", ")}. New records will fail unless a default or automation fills them.
-                    </Callout>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
-            ) : (
-              <div class="card__body muted">Add data and pick an object to map columns.</div>
-            )}
-          </section>
+            </section>
+
+            {/* 2. Target */}
+            <section class={"card imp__step" + (dataRows.length ? "" : " is-dim")}>
+              <StepHead n={2} title="Object & operation" done={!!describe} />
+              <div class="card__body imp__target">
+                <label class="stack imp__field">
+                  <span class="imp__label">Object</span>
+                  <ObjectPicker objects={objects} value={objectName} onChange={setObjectName} />
+                </label>
+                <div class="stack imp__field">
+                  <span class="imp__label">Operation</span>
+                  <Seg label="Operation" value={op} onChange={setOp} options={OPS.map((o) => ({ value: o.value, label: o.label, title: o.hint }))} />
+                </div>
+                {op === "upsert" && describe && (
+                  <label class="stack imp__field">
+                    <span class="imp__label">Match records on</span>
+                    <select class="select" value={keyField ?? ""} onChange={(e) => setKeyField((e.target as HTMLSelectElement).value)}>
+                      {externalIdFields(describe).map((f) => (
+                        <option key={f.name} value={f.name}>
+                          {f.label} ({f.name})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+            </section>
+
+            {/* 3. Mapping */}
+            <section class={"card imp__step" + (describe && headers.length ? "" : " is-dim")}>
+              <StepHead n={3} title="Map columns" done={!!describe && mappedCount > 0 && !missing.length && !needsId && !needsKey}>
+                {describe && headers.length > 0 && (
+                  <span class="muted">
+                    {mappedCount} of {headers.length} columns mapped
+                  </span>
+                )}
+              </StepHead>
+              {describe && headers.length > 0 ? (
+                <div class="imp__map">
+                  <div class="imp__maprow imp__maprow--head">
+                    <span>Column</span>
+                    <span>Sample</span>
+                    <span />
+                    <span>Field</span>
+                  </div>
+                  {headers.map((h, col) => {
+                    const m = mapping[col] ?? null;
+                    const ignored = m && !writableNames.has(m);
+                    return (
+                      <div class={"imp__maprow" + (effectiveMapping[col] ? " is-mapped" : "")} key={col}>
+                        <span class="truncate imp__col" title={h}>
+                          {h || <span class="muted">(column {col + 1})</span>}
+                        </span>
+                        <span class="truncate muted mono imp__sample" title={dataRows.slice(0, 3).map((r) => r[col]).join(" · ")}>
+                          {dataRows.slice(0, 3).map((r) => r[col] ?? "").filter(Boolean).join(" · ") || "—"}
+                        </span>
+                        <ArrowRight class="imp__arrow" aria-hidden="true" />
+                        <span class="row" style={{ gap: 6 }}>
+                          <select
+                            class="select select--sm"
+                            aria-label={`Field for column ${h}`}
+                            value={m ?? ""}
+                            onChange={(e) => {
+                              const v = (e.target as HTMLSelectElement).value || null;
+                              setMapping((prev) => prev.map((x, i) => (i === col ? v : x === v && v ? null : x)));
+                            }}
+                          >
+                            <option value="">— Skip this column —</option>
+                            {writable.map((f) => (
+                              <option key={f.name} value={f.name}>
+                                {f.label} ({f.name})
+                              </option>
+                            ))}
+                          </select>
+                          {ignored && (
+                            <span class="imp__warn" title={`${m} can't be written by ${op}`}>
+                              <AlertTriangle />
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div class="imp__checks">
+                    {needsId && <Callout tone="danger">Map a column to the record Id — {op} needs it to find each record.</Callout>}
+                    {needsKey && <Callout tone="danger">Map a column to {keyField} — upsert matches records on it.</Callout>}
+                    {missing.length > 0 && (
+                      <Callout tone="warning" title="Required fields aren't mapped">
+                        {missing.map((f) => f.label).join(", ")}. New records will fail unless a default or automation fills them.
+                      </Callout>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div class="card__body muted">Add data and pick an object to map columns.</div>
+              )}
+            </section>
+          </fieldset>
 
           {/* 4. Review & run, then results */}
           {describe && dataRows.length > 0 && (
@@ -328,6 +331,7 @@ export function ImportPage() {
                           </span>
                           <Seg
                             label="Blank cells"
+                            disabled={running}
                             value={blank}
                             onChange={setBlank}
                             options={[

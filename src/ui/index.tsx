@@ -187,11 +187,11 @@ export function CopyButton({ text, label = "Copy", class: cls, tabIndex }: { tex
   );
 }
 
-export function Seg<T extends string>({ value, options, onChange, label }: { value: T; options: Array<{ value: T; label: ComponentChildren; count?: number; title?: string }>; onChange: (v: T) => void; label?: string }) {
+export function Seg<T extends string>({ value, options, onChange, label, disabled }: { value: T; options: Array<{ value: T; label: ComponentChildren; count?: number; title?: string }>; onChange: (v: T) => void; label?: string; disabled?: boolean }) {
   return (
     <div class="seg" role="group" aria-label={label}>
       {options.map((o) => (
-        <button key={o.value} aria-pressed={value === o.value} title={o.title} onClick={() => onChange(o.value)}>
+        <button key={o.value} aria-pressed={value === o.value} title={o.title} disabled={disabled} onClick={() => onChange(o.value)}>
           {o.label}
           {o.count != null && <span class="seg__count">{o.count}</span>}
         </button>

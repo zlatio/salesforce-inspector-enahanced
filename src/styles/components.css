@@ -27,6 +27,13 @@
 .btn:active:not(:disabled) {
   transform: translateY(0.5px);
 }
+.input:disabled,
+.select:disabled,
+.textarea:disabled,
+.seg button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .btn:disabled,
 .btn.is-busy {
   opacity: 0.5;
