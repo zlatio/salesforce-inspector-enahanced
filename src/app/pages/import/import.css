@@ -223,3 +223,9 @@
 .imp__progress .meter {
   flex: 1;
 }
+.imp__bad {
+  color: var(--danger-text);
+  text-decoration: underline wavy;
+  text-decoration-color: color-mix(in oklab, var(--danger-text) 60%, transparent);
+  text-underline-offset: 3px;
+}

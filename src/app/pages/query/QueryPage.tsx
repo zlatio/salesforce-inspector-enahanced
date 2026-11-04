@@ -75,7 +75,16 @@ export function QueryPage() {
     const q = route.value.params.get("q");
     if (!q) return;
     const tooling = route.value.params.get("tooling") === "1";
-    const empty = tabs.value.find((t) => !t.soql.trim() || t.soql === NEW_TAB_SOQL);
+    // The same query is already open: switch to it rather than piling up duplicate tabs.
+    const same = tabs.value.find((t) => t.soql.trim() === q.trim() && !!t.tooling === tooling);
+    if (same) {
+      activeTabId.value = same.id;
+      navigate("#/query", true);
+      // Unsaved cell edits stay put; re-running would ask to discard them.
+      if (!gridChangeCount(same.id)) setTimeout(() => execute(same), 0);
+      return;
+    }
+    const empty =tabs.value.find((t) => !t.soql.trim() || t.soql === NEW_TAB_SOQL);
     const t = empty ? (setTabSoql(empty.id, q, { tooling }), (activeTabId.value = empty.id), empty) : newTab(q, tooling);
     navigate("#/query", true);
     setTimeout(() => execute({ ...t, soql: q, tooling }), 0);

@@ -120,6 +120,8 @@ export interface PreparedRow {
   errors: string[];
   /** Problems that may still succeed (e.g. a required field blank on upsert, which only matters for new records). */
   warnings: string[];
+  /** Raw text of cells that failed to convert, shown in the preview next to the error. */
+  invalid?: Record<string, string>;
 }
 
 const requiredOnCreate = (f: DescribeField) => f.createable && !f.nillable && !f.defaultedOnCreate && f.type !== "boolean";
@@ -132,6 +134,7 @@ export function prepareRows(rows: string[][], mapping: Array<string | null>, d: 
     const values: Record<string, unknown> = {};
     const errors: string[] = [];
     const warnings: string[] = [];
+    const invalid: Record<string, string> = {};
     mapping.forEach((fieldName, col) => {
       if (!fieldName) return;
       if (op === "delete" && fieldName !== "Id") return;
@@ -141,6 +144,7 @@ export function prepareRows(rows: string[][], mapping: Array<string | null>, d: 
         if (v !== undefined) values[fieldName] = v;
       } catch (e) {
         errors.push(`${f.label}: ${(e as Error).message}`);
+        invalid[fieldName] = cells[col] ?? "";
       }
     });
     // Required fields that are mapped but blank in this row.
@@ -153,7 +157,7 @@ export function prepareRows(rows: string[][], mapping: Array<string | null>, d: 
     if ((op === "update" || op === "delete") && !values.Id) errors.push("Missing record Id");
     if (op === "upsert" && keyField && (values[keyField] == null || values[keyField] === "")) errors.push(`Missing ${keyField}`);
     if (op === "insert") delete values.Id;
-    return { index, values, errors, warnings };
+    return { index, values, errors, warnings, invalid };
   });
 }
 

@@ -540,7 +540,7 @@ function Preview({ rows, describe, mapping, op }: { rows: ReturnType<typeof prep
                 <td class="imp__rownum">{r.index + 1}</td>
                 {fields.map((f) => (
                   <td key={f} class="truncate">
-                    {r.values[f] === undefined ? <span class="muted">—</span> : r.values[f] === null ? <span class="muted">(clear)</span> : String(r.values[f])}
+                    {r.invalid?.[f] !== undefined ? <span class="imp__bad" title="This value can't be imported">{r.invalid[f]}</span> : r.values[f] === undefined ? <span class="muted">—</span> : r.values[f] === null ? <span class="muted">(clear)</span> : String(r.values[f])}
                   </td>
                 ))}
                 <td class="imp__check">
