@@ -63,9 +63,13 @@ export function fromInput(f: DescribeField, s: string): unknown {
   }
 }
 
+// The API returns datetimes as "…000+0000"; the editor produces "…000Z". Same instant, different text.
+const ISO_DATETIME = /^\d{4}-\d\d-\d\dT\d\d:\d\d(:\d\d(\.\d+)?)?(Z|[+-]\d\d:?\d\d)$/;
+
 export function sameValue(a: unknown, b: unknown) {
   if (a == null && b == null) return true;
   if (a == null || b == null) return false;
+  if (typeof a === "string" && typeof b === "string" && ISO_DATETIME.test(a) && ISO_DATETIME.test(b)) return Date.parse(a) === Date.parse(b);
   return JSON.stringify(a) === JSON.stringify(b);
 }
 

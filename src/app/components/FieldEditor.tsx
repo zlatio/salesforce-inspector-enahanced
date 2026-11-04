@@ -32,10 +32,13 @@ export function Editor({ f, value, original, onCommit, onCancel, onTab, onLookup
 
   // Guard so a blur that fires while unmounting can't overwrite the committed value.
   const done = useRef(false);
+  // Text the editor opened with: committing it unchanged keeps the exact original value, so a
+  // round trip through the input (e.g. a datetime losing its milliseconds) never stages an edit.
+  const initial = useRef(text);
   const commit = (raw = text, then?: () => void) => {
     if (done.current) return;
     try {
-      const v = fromInput(f, raw);
+      const v = raw === initial.current ? value : fromInput(f, raw);
       done.current = true;
       onCommit(v);
       then?.();
