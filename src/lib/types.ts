@@ -170,3 +170,8 @@ export interface OrgInfo {
 }
 
 export type OrgEnv = "production" | "sandbox" | "scratch" | "developer" | "trial";
+
+/** Display names for lookup ids on a record, keyed by id. */
+export interface LookupNames {
+  [id: string]: { name: string; type: string };
+}

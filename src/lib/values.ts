@@ -1,4 +1,4 @@
-import type { DescribeField } from "../../../lib/types";
+import type { DescribeField } from "./types";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 

@@ -523,56 +523,6 @@ button.fh:hover {
   vertical-align: -1px;
 }
 
-.feditor {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  width: 100%;
-}
-.feditor__hint {
-  font-size: var(--fs-2xs);
-  color: var(--text-3);
-}
-.feditor__count {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  font-size: var(--fs-2xs);
-  color: var(--text-3);
-  font-variant-numeric: tabular-nums;
-}
-.feditor__count.is-over {
-  color: var(--danger-text);
-}
-.mpick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  width: 100%;
-  padding: 4px 0;
-}
-.mpick__opt {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 24px;
-  padding: 0 9px;
-  border-radius: 99px;
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  font-size: var(--fs-sm);
-}
-.mpick__opt svg {
-  width: 12px;
-  height: 12px;
-}
-.mpick__opt.is-on {
-  background: var(--accent-soft);
-  border-color: var(--accent-border);
-  color: var(--accent-text);
-}
-
 /* ---------- Save bar ---------- */
 .savebar {
   position: absolute;
@@ -950,61 +900,6 @@ button.fh:hover {
   opacity: 1;
 }
 .rel__count {
-  font-size: var(--fs-sm);
-}
-
-/* ---------- Lookup editor ---------- */
-.lookup {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-}
-.lookup__input {
-  flex: 1;
-}
-.lookup__list {
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  max-height: 260px;
-  overflow: auto;
-  padding: 4px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-lg);
-}
-.lookup__opt {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  height: 30px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--radius-xs);
-  background: none;
-  text-align: left;
-  font-size: var(--fs-md);
-}
-.lookup__opt.is-active {
-  background: var(--accent-soft-2);
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-.lookup__id {
-  margin-left: auto;
-  font-size: var(--fs-xs);
-}
-.lookup__type {
-  font-size: var(--fs-xs);
-}
-.lookup__empty {
-  padding: 8px;
-  color: var(--text-3);
   font-size: var(--fs-sm);
 }
 

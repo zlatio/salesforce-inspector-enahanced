@@ -5,7 +5,7 @@ import { isAggregate } from "../../../lib/soql";
 import type { DescribeSObjectResult, SfRecord } from "../../../lib/types";
 import { plural } from "../../../lib/format";
 import { Button, Callout, Keys, Modal, Spinner, modKey, toast } from "../../../ui";
-import { isEditable, sameValue } from "../inspector/values";
+import { isEditable, sameValue } from "../../../lib/values";
 import type { GridEdit, GridView } from "./ResultGrid";
 import { EMPTY_GRID_EDIT, clearGridEdit, gridEdits, setRun, updateGridEdit, type QueryRun } from "./store";
 

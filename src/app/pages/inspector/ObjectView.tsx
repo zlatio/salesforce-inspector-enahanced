@@ -2,22 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { Braces, ExternalLink, GitFork, Layers, ListTree, RefreshCw, Settings2, TerminalSquare, Undo2, Save, AlertCircle, AlertTriangle } from "lucide-preact";
 import { orgState } from "../../../lib/org";
 import { SfError } from "../../../lib/sf";
-import type { DescribeField, DescribeSObjectResult, SfRecord } from "../../../lib/types";
+import type { DescribeField, DescribeSObjectResult, LookupNames, SfRecord } from "../../../lib/types";
 import { fmtNumber, fmtRelative, plural } from "../../../lib/format";
 import { Badge, Button, Callout, CopyButton, Empty, Keys, Modal, Spinner, Switch, altKey, isMac, isTyping, modKey, onTablistKey, toast } from "../../../ui";
 import { links, navigate, route } from "../../router";
 import { FieldsTable, type Filter } from "./FieldsTable";
 import { FieldDrawer } from "./FieldDrawer";
 import { RelationshipsTab } from "./RelationshipsTab";
-import { sameValue } from "./values";
+import { sameValue } from "../../../lib/values";
 import { pushRecent } from "../../../lib/recent";
 import { defaultQuery } from "../../../lib/queries";
 
 type Tab = "fields" | "relationships" | "recordtypes" | "json";
-
-export interface LookupNames {
-  [id: string]: { name: string; type: string };
-}
 
 export function ObjectView({ objectName, recordId, tooling }: { objectName: string; recordId?: string; tooling: boolean }) {
   const sf = orgState.value!.sf;

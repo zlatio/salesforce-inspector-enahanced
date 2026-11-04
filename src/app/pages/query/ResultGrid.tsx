@@ -6,7 +6,7 @@ import type { SfRecord } from "../../../lib/types";
 import { copyText, CopyButton, Modal, toast } from "../../../ui";
 import { links, navigate } from "../../router";
 import type { DescribeField } from "../../../lib/types";
-import { Editor } from "../inspector/FieldsTable";
+import { Editor } from "../../components/FieldEditor";
 import { Pencil } from "lucide-preact";
 import { signal } from "@preact/signals";
 

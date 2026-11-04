@@ -1,11 +1,10 @@
 import { useEffect, useRef } from "preact/hooks";
 import { ChevronRight, Search, TerminalSquare, X } from "lucide-preact";
 import { soqlLiteral } from "../../../lib/soql";
-import type { DescribeField, DescribeSObjectResult, SfRecord } from "../../../lib/types";
+import type { DescribeField, DescribeSObjectResult, LookupNames, SfRecord } from "../../../lib/types";
 import { fieldTypeLabel, rawString } from "../../../lib/format";
 import { Badge, Button, CopyButton } from "../../../ui";
 import { links, navigate } from "../../router";
-import type { LookupNames } from "./ObjectView";
 import { FieldFlags, Value } from "./FieldsTable";
 
 export function FieldDrawer({

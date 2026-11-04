@@ -3,6 +3,7 @@ import { Search, Snowflake, UserRound, Users } from "lucide-preact";
 import { orgState } from "../../../lib/org";
 import type { SfRecord } from "../../../lib/types";
 import { fmtNumber, fmtRelative } from "../../../lib/format";
+import { likeEscape } from "../../../lib/soql";
 import { Badge, Callout, Empty, SearchInput, Seg, Spinner, Switch } from "../../../ui";
 import { links, navigate, route } from "../../router";
 import { UserDetail } from "./UserDetail";
@@ -19,9 +20,6 @@ export interface UserRow extends SfRecord {
   Profile?: { Name: string; UserLicense?: { Name: string } | null } | null;
   UserRole?: { Name: string } | null;
 }
-
-export const soqlEscape = (s: string) => s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-export const likeEscape = (s: string) => soqlEscape(s).replace(/%/g, "\\%").replace(/_/g, "\\_");
 
 export function initials(name: string) {
   const parts = name.trim().split(/\s+/);

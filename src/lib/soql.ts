@@ -192,6 +192,11 @@ export function errorOffset(soql: string, message: string): number | null {
   return Math.min(soql.length, off + col);
 }
 
+/** Escape text for use inside a quoted SOQL string literal. */
+export const soqlEscape = (s: string) => s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+/** Escape text for a LIKE pattern: also neutralises the % and _ wildcards. */
+export const likeEscape = (s: string) => soqlEscape(s).replace(/%/g, "\\%").replace(/_/g, "\\_");
+
 /** A SOQL literal for a field value, or null when the type can't be compared in a WHERE clause. */
 export function soqlLiteral(type: string, v: unknown): string | null {
   if (v == null || v === "") return "null";
