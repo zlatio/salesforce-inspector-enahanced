@@ -2,17 +2,16 @@
 
 export type Delimiter = "\t" | "," | ";";
 
-/** Guess the delimiter from the first few lines: Excel/Sheets pastes are tab-separated. */
+/**
+ * Guess the delimiter from the header row: header names rarely contain separators, while data
+ * cells (addresses, notes) often contain commas. Excel and Sheets pastes are tab-separated, so
+ * any tab in the header wins. Quoted sections are ignored.
+ */
 export function detectDelimiter(text: string): Delimiter {
-  const sample = text.split(/\r?\n/).slice(0, 5).join("\n");
-  const count = (d: string) => sample.split(d).length - 1;
-  const scores: Array<[Delimiter, number]> = [
-    ["\t", count("\t") * 1.2],
-    [",", count(",")],
-    [";", count(";")],
-  ];
-  scores.sort((a, b) => b[1] - a[1]);
-  return scores[0][1] > 0 ? scores[0][0] : ",";
+  const header = (text.replace(/^\uFEFF/, "").split(/\r?\n/).find((l) => l.trim() !== "") ?? "").replace(/"(?:[^"]|"")*"/g, "");
+  const count = (d: string) => header.split(d).length - 1;
+  if (count("\t") > 0) return "\t";
+  return count(";") > count(",") ? ";" : ",";
 }
 
 /** RFC 4180-style parser: quoted fields, "" escapes, delimiters and newlines inside quotes. */
