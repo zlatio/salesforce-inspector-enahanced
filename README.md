@@ -92,16 +92,23 @@ More screenshots are in [`docs/screenshots`](docs/screenshots). Short walkthroug
   - The browser-level shortcuts can be changed at `chrome://extensions/shortcuts`.
 - Light, dark or system theme. Text meets WCAG AA contrast in both themes, and every control is reachable from the keyboard.
 
-## Install (development)
+## Install
+
+1. Download `salesforce-inspector-enhanced-<version>.zip` from the [latest release](https://github.com/zlatio/salesforce-inspector-enahanced/releases/latest) and unzip it into a folder you'll keep. Chrome loads the extension from that folder.
+2. Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked** and select the folder.
+
+To update, unzip the new release over the same folder and click the reload icon on the extension's card.
+
+## Build from source
 
 ```bash
 npm install
 npm run build        # type-checks, then builds into dist/
 ```
 
-Then open `chrome://extensions`, enable **Developer mode**, click **Load unpacked** and select the `dist/` folder.
+Then load the `dist/` folder with **Load unpacked** as above.
 
-`npm run build:fast` skips the type check. After changing `assets/icon.svg`, run `node scripts/icons.mjs` (needs `rsvg-convert`) to regenerate the PNG icons.
+`npm run build:fast` skips the type check. `npm run package` builds and zips `dist/` into `salesforce-inspector-enhanced-<version>.zip`, the file attached to each release. Bump `version` in both `package.json` and `public/manifest.json` before packaging a new release. After changing `assets/icon.svg`, run `node scripts/icons.mjs` (needs `rsvg-convert`) to regenerate the PNG icons.
 
 ## How it works
 
