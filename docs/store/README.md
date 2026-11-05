@@ -56,7 +56,7 @@ EVERYWHERE
 PRIVACY
 The extension talks only to the Salesforce org you're logged into. It has no server of its own, no analytics and no tracking, and it never sends your data to the developer or anyone else.
 
-Open source (MIT): https://github.com/zlatio/salesforce-inspector-enahanced
+Open source (MIT): https://github.com/zlatio/salesforce-inspector-enhanced
 
 Salesforce Inspector Enhanced is an independent project. It isn't affiliated with, endorsed by or sponsored by Salesforce, Inc. Salesforce is a trademark of Salesforce, Inc.
 ```
@@ -77,8 +77,8 @@ Salesforce Inspector Enhanced is an independent project. It isn't affiliated wit
 The screenshots use a made-up demo org ("Acme") with invented people and companies, so no real org data is shown.
 
 **Additional fields:**
-- Homepage URL: `https://github.com/zlatio/salesforce-inspector-enahanced`
-- Support URL: `https://github.com/zlatio/salesforce-inspector-enahanced/issues`
+- Homepage URL: `https://github.com/zlatio/salesforce-inspector-enhanced`
+- Support URL: `https://github.com/zlatio/salesforce-inspector-enhanced/issues`
 - Official URL: leave empty. It needs a site verified in Google Search Console.
 - Mature content: No
 
@@ -130,7 +130,7 @@ Leave the rest unticked. Health, financial, communications, location, web histor
 - I do not use or transfer user data for purposes that are unrelated to my item's single purpose
 - I do not use or transfer user data to determine creditworthiness or for lending purposes
 
-**Privacy policy URL:** `https://github.com/zlatio/salesforce-inspector-enahanced/blob/master/PRIVACY.md`
+**Privacy policy URL:** `https://github.com/zlatio/salesforce-inspector-enhanced/blob/master/PRIVACY.md`
 
 ## 4. Distribution tab
 

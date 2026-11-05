@@ -94,7 +94,7 @@ The screenshots and videos use a demo org with made-up people and companies. Mor
 
 ## Install
 
-1. Download `salesforce-inspector-enhanced-<version>.zip` from the [latest release](https://github.com/zlatio/salesforce-inspector-enahanced/releases/latest) and unzip it into a folder you'll keep. Chrome loads the extension from that folder.
+1. Download `salesforce-inspector-enhanced-<version>.zip` from the [latest release](https://github.com/zlatio/salesforce-inspector-enhanced/releases/latest) and unzip it into a folder you'll keep. Chrome loads the extension from that folder.
 2. Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked** and select the folder.
 
 To update, unzip the new release over the same folder and click the reload icon on the extension's card.

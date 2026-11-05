@@ -46,6 +46,6 @@ You can clear query history from the Query page, and remove everything by uninst
 
 ## Changes and contact
 
-If this policy changes, the new version will be published at this address with a new effective date. Questions or concerns: [open an issue on GitHub](https://github.com/zlatio/salesforce-inspector-enahanced/issues).
+If this policy changes, the new version will be published at this address with a new effective date. Questions or concerns: [open an issue on GitHub](https://github.com/zlatio/salesforce-inspector-enhanced/issues).
 
 Salesforce Inspector Enhanced is an independent project. It isn't affiliated with, endorsed by or sponsored by Salesforce, Inc. Salesforce is a trademark of Salesforce, Inc.
