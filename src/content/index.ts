@@ -1,6 +1,8 @@
 // In-page launcher: a small tab on the right edge of Salesforce pages that opens the Inspector
 // popup as a floating panel. Everything lives in a shadow root so Salesforce styles can't leak in.
 
+// Elements that mark a Salesforce page. The first five come from Salesforce Inspector Reloaded (MIT),
+// see THIRD_PARTY_NOTICES.md.
 const SF_SELECTORS = "body.sfdcBody, body.ApexCSIPage, #auraLoadingBox, #studioBody, #flowContainer, one-appnav, .slds-global-header, force-aloha-page";
 const POS_KEY = "sie.launcher.top";
 

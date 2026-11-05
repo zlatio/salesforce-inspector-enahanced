@@ -17,6 +17,10 @@ const SF_HOST_SUFFIXES = [
   "crmforce.mil",
 ];
 
+// The session lookup in resolveApiHost (these domains and their order, matching on the org id, skipping
+// help.salesforce.com, the .mcas.ms fallback) and the host mapping in toApiHost are adapted from
+// Salesforce Inspector Reloaded (MIT). See THIRD_PARTY_NOTICES.md.
+
 // Cookie domains that can hold an API-capable session, in the order they should be tried.
 const SESSION_COOKIE_DOMAINS = ["salesforce.com", "cloudforce.com", "salesforce.mil", "cloudforce.mil", "sfcrmproducts.cn", "force.com"];
 

@@ -123,7 +123,7 @@ Then load the `dist/` folder with **Load unpacked** as above.
 
 Built with Preact, Preact Signals, CodeMirror 6 and Vite. There are no runtime network calls other than to your own Salesforce org; see the [privacy policy](PRIVACY.md) for what's read and stored.
 
-Inspired by [Salesforce Inspector Reloaded](https://github.com/tprouvot/Salesforce-Inspector-reloaded), which was used as a reference for the session/cookie approach. No code was copied.
+Inspired by [Salesforce Inspector Reloaded](https://github.com/tprouvot/Salesforce-Inspector-reloaded) (MIT). A few small pieces are adapted from it: how the session cookie is found, the mapping from Lightning to API hosts, the Salesforce page detection and the list of Salesforce domains. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) credits those and the libraries and fonts the extension bundles.
 
 ## License
 
