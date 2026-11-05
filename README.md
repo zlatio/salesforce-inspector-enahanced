@@ -18,7 +18,7 @@ It uses your existing Salesforce browser session. There's nothing to configure a
 | **Data import** | **Side panel** |
 | ![Data import](docs/screenshots/import-review-dark.png) | <img src="docs/screenshots/sidepanel-light.png" alt="Side panel" width="260"> |
 
-More screenshots are in [`docs/screenshots`](docs/screenshots). Short walkthroughs: [record inspector](docs/videos/record-inspector.mp4) · [SOQL](docs/videos/soql.mp4) ([dark](docs/videos/soql-dark.mp4)) · [limits](docs/videos/limits.mp4) · [command palette](docs/videos/palette.mp4).
+The screenshots and videos use a demo org with made-up people and companies. More screenshots are in [`docs/screenshots`](docs/screenshots). Short walkthroughs: [record inspector](docs/videos/record-inspector.mp4) · [SOQL](docs/videos/soql.mp4) ([dark](docs/videos/soql-dark.mp4)) · [limits](docs/videos/limits.mp4) · [command palette](docs/videos/palette.mp4).
 
 ## Features
 
