@@ -1,0 +1,103 @@
+<!doctype html>
+<!-- Store screenshot 5 (1280×800): the toolbar popup and the side panel. Rendered by scripts/store-assets.sh
+     from raw 2x captures of the extension running against the fixture-backed demo org. -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="tile.css" />
+    <style>
+      main {
+        position: absolute;
+        left: 80px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 380px;
+      }
+      h1 {
+        font-size: 46px;
+        font-weight: 760;
+        letter-spacing: -0.03em;
+        line-height: 1.08;
+        margin-bottom: 22px;
+        text-wrap: balance;
+      }
+      p {
+        font-size: 20px;
+        line-height: 1.5;
+        font-weight: 450;
+        color: rgba(255, 255, 255, 0.88);
+        margin-bottom: 28px;
+      }
+      .keys {
+        display: grid;
+        gap: 12px;
+        font-size: 17px;
+        color: rgba(255, 255, 255, 0.88);
+      }
+      kbd {
+        font: inherit;
+        font-weight: 600;
+        display: inline-block;
+        min-width: 132px;
+        margin-right: 10px;
+        padding: 4px 10px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        color: #fff;
+        text-align: center;
+      }
+      figure {
+        position: absolute;
+        margin: 0;
+      }
+      figcaption {
+        font-size: 15px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.82);
+        margin-bottom: 10px;
+      }
+      figure img {
+        display: block;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        box-shadow:
+          0 2px 6px rgba(20, 6, 70, 0.25),
+          0 30px 70px rgba(20, 6, 70, 0.45);
+      }
+      .panel {
+        right: 72px;
+        top: 34px;
+      }
+      .panel img {
+        height: 700px;
+      }
+      .popup {
+        right: 425px;
+        top: 50%;
+        transform: translateY(-46%);
+      }
+      .popup img {
+        width: 340px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Right where you work</h1>
+      <p>The toolbar popup knows which record you're on. Keep the side panel open beside Salesforce to see the record's fields as you browse.</p>
+      <div class="keys">
+        <div><kbd>Alt+Shift+K</kbd>Popup</div>
+        <div><kbd>Alt+Shift+S</kbd>Side panel</div>
+      </div>
+    </main>
+    <figure class="popup">
+      <figcaption>Toolbar popup</figcaption>
+      <img src="popup-light@2x.png" alt="" />
+    </figure>
+    <figure class="panel">
+      <figcaption>Side panel</figcaption>
+      <img src="sidepanel-dark@2x.png" alt="" />
+    </figure>
+  </body>
+</html>

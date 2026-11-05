@@ -1,0 +1,60 @@
+/* Shared look for the store promo tiles: the extension icon's violet, Inter, white type. */
+@font-face {
+  font-family: "Inter Variable";
+  src: url("../../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: "Inter Variable", sans-serif;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(255, 255, 255, 0.16), transparent 55%),
+    radial-gradient(80% 80% at 100% 100%, rgba(20, 6, 70, 0.55), transparent 70%),
+    linear-gradient(135deg, #8064f2 0%, #5a32c8 52%, #3e1fa0 100%);
+  position: relative;
+}
+
+/* Faint dot grid so the flat gradient has some texture. */
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.13) 1px, transparent 1.2px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(115deg, transparent 20%, #000 75%);
+}
+
+.mark {
+  display: block;
+  border-radius: 24%;
+  background: #fff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 10px 24px rgba(28, 8, 90, 0.35);
+}
+
+.kicker {
+  font-weight: 560;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.name {
+  font-weight: 760;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+}

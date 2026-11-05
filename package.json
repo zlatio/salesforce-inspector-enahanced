@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build && vite build --config vite.content.config.ts",
     "build:fast": "vite build && vite build --config vite.content.config.ts",
     "package": "npm run build && cd dist && rm -f ../salesforce-inspector-enhanced-$npm_package_version.zip && zip -qrX ../salesforce-inspector-enhanced-$npm_package_version.zip .",
+    "store:assets": "bash scripts/store-assets.sh",
     "watch": "vite build --watch",
     "typecheck": "tsc --noEmit"
   },
