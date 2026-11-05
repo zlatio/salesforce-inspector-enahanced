@@ -121,6 +121,6 @@ Then load the `dist/` folder with **Load unpacked** as above.
 | `src/lib/sf.ts` | REST client: Bearer session, cached describes, Composite Batch API, and `Sforce-Limit-Info` tracking. |
 | `src/styles/tokens.css` | Design tokens. Every color comes from here, and light and dark are defined side by side. |
 
-Built with Preact, Preact Signals, CodeMirror 6 and Vite. There are no runtime network calls other than to your own Salesforce org.
+Built with Preact, Preact Signals, CodeMirror 6 and Vite. There are no runtime network calls other than to your own Salesforce org; see the [privacy policy](PRIVACY.md) for what's read and stored.
 
 Inspired by [Salesforce Inspector Reloaded](https://github.com/tprouvot/Salesforce-Inspector-reloaded), which was used as a reference for the session/cookie approach. No code was copied.
