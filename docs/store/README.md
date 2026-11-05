@@ -56,7 +56,7 @@ EVERYWHERE
 PRIVACY
 The extension talks only to the Salesforce org you're logged into. It has no server of its own, no analytics and no tracking, and it never sends your data to the developer or anyone else.
 
-Open source: https://github.com/zlatio/salesforce-inspector-enahanced
+Open source (MIT): https://github.com/zlatio/salesforce-inspector-enahanced
 
 Salesforce Inspector Enhanced is an independent project. It isn't affiliated with, endorsed by or sponsored by Salesforce, Inc. Salesforce is a trademark of Salesforce, Inc.
 ```

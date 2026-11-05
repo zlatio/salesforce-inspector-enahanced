@@ -124,3 +124,7 @@ Then load the `dist/` folder with **Load unpacked** as above.
 Built with Preact, Preact Signals, CodeMirror 6 and Vite. There are no runtime network calls other than to your own Salesforce org; see the [privacy policy](PRIVACY.md) for what's read and stored.
 
 Inspired by [Salesforce Inspector Reloaded](https://github.com/tprouvot/Salesforce-Inspector-reloaded), which was used as a reference for the session/cookie approach. No code was copied.
+
+## License
+
+[MIT](LICENSE)
