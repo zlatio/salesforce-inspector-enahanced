@@ -1,7 +1,7 @@
 {
   "name": "salesforce-inspector-enhanced",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "A modern, themeable browser extension for inspecting and editing Salesforce records, running SOQL and monitoring org limits.",
   "scripts": {

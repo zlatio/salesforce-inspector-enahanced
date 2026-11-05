@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Salesforce Inspector Enhanced",
   "short_name": "SF Inspector+",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Inspect and edit records, run and manage SOQL, and monitor org limits \u2014 with a modern light and dark UI.",
   "minimum_chrome_version": "116",
   "icons": {
